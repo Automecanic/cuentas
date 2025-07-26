@@ -1,0 +1,51 @@
+<!DOCTYPE html>
+<!DOCTYPE html>
+<html lang="es">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Resumen de Cuentas</title>
+    <!-- Tailwind CSS CDN -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        /* Custom styles for the Inter font */
+        body {
+            font-family: 'Inter', sans-serif;
+        }
+    </style>
+</head>
+
+<body class="bg-gradient-to-br from-blue-50 to-indigo-100 min-h-screen flex items-center justify-center p-4">
+    <div class="bg-white p-8 rounded-xl shadow-2xl w-full max-w-md text-center border border-gray-200">
+        <h1 class="text-4xl font-extrabold text-gray-900 mb-8 tracking-tight">Resumen de Cuentas</h1>
+
+        <!-- Sección de Gráficos de Rentabilidad -->
+        <div
+            class="mb-6 bg-blue-500 hover:bg-blue-600 transition-colors duration-300 rounded-lg shadow-md overflow-hidden transform hover:scale-105">
+            <a href="beneficio/grafico_beneficios.html" class="block p-5 text-white text-2xl font-semibold">
+                Gráficos de Rentabilidad
+            </a>
+        </div>
+
+        <!-- Sección de Gráficos por Pares -->
+        <div
+            class="mb-6 bg-green-500 hover:bg-green-600 transition-colors duration-300 rounded-lg shadow-md overflow-hidden transform hover:scale-105">
+            <a href="pares/pares_rentables.html" class="block p-5 text-white text-2xl font-semibold">
+                Gráficos por Pares
+            </a>
+        </div>
+
+        <!-- Sección de Hojas .csv -->
+        <div
+            class="bg-purple-500 hover:bg-purple-600 transition-colors duration-300 rounded-lg shadow-md overflow-hidden transform hover:scale-105">
+            <a href="csv/archivos.html" class="block p-5 text-white text-2xl font-semibold">
+                Hojas .csv
+            </a>
+        </div>
+
+        <p class="mt-8 text-gray-600 text-sm">Explora tus datos de trading con facilidad.</p>
+    </div>
+</body>
+
+</html>
