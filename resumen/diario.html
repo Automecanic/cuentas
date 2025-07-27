@@ -1,0 +1,138 @@
+<!DOCTYPE html>
+<html lang="es">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Gráfico de Beneficios Diarios</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: #f3f4f6;
+        }
+
+        .container {
+            max-width: 1200px;
+            margin: 2rem auto;
+            padding: 1.5rem;
+            background-color: #ffffff;
+            border-radius: 0.75rem;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+        }
+
+        .chart-container {
+            position: relative;
+            height: 500px;
+            width: 100%;
+            margin-bottom: 2rem;
+        }
+
+        canvas {
+            width: 100%;
+            height: 100%;
+        }
+    </style>
+</head>
+
+<body class="p-4 bg-gray-100">
+    <div class="container">
+        <h1 class="text-3xl font-bold mb-6 text-center text-gray-800">Progresión de Beneficios Diarios (USDT)</h1>
+
+        <div class="chart-container">
+            <canvas id="dailyProfitChart" width="800" height="500"></canvas>
+        </div>
+
+        <div class="mt-8 text-center">
+            <a href="index.html"
+                class="inline-flex items-center px-6 py-3 text-base font-medium text-white bg-gray-600 hover:bg-gray-700 rounded-md shadow-sm transition">←
+                Volver al Resumen</a>
+        </div>
+    </div>
+
+    <!-- Chart.js (solo esto, sin adaptadores) -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@3.9.1/dist/chart.min.js"></script>
+
+    <script>
+        const csvData = `fecha,beneficio
+2025-07-19,-14.869814
+2025-07-20,104.975420
+2025-07-21,124.908070
+2025-07-22,-19.924300
+2025-07-23,-704.148120
+2025-07-24,-16.894375
+2025-07-25,258.914106
+2025-07-26,820.686507
+  
+`;
+
+        // Procesar CSV
+        const lines = csvData.trim().split('\n');
+        const headers = lines[0].split(',');
+        const rawData = lines.slice(1).map(line => {
+            const [fecha, beneficio] = line.split(',');
+            return {
+                label: fecha,
+                value: parseFloat(beneficio)
+            };
+        });
+
+        const labels = rawData.map(d => d.label);
+        const data = rawData.map(d => d.value);
+        const pointColors = data.map(v =>
+            v > 0 ? 'rgba(75,192,192,1)' : v < 0 ? 'rgba(255,99,132,1)' : 'rgba(200,200,200,1)'
+        );
+
+        const ctx = document.getElementById('dailyProfitChart').getContext('2d');
+        new Chart(ctx, {
+            type: 'line',
+            data: {
+                labels: labels,
+                datasets: [{
+                    label: 'Beneficio/Pérdida Diario (USDT)',
+                    data: data,
+                    fill: true,
+                    backgroundColor: 'rgba(75,192,192,0.2)',
+                    borderColor: 'rgba(75,192,192,1)',
+                    borderWidth: 2,
+                    tension: 0.3,
+                    pointBackgroundColor: pointColors,
+                    pointBorderColor: pointColors,
+                    pointRadius: 5,
+                    pointHoverRadius: 7
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                plugins: {
+                    tooltip: {
+                        callbacks: {
+                            label: function (context) {
+                                return `Beneficio Diario: ${context.raw.toFixed(2)} USDT`;
+                            }
+                        }
+                    }
+                },
+                scales: {
+                    x: {
+                        type: 'category',
+                        title: {
+                            display: true,
+                            text: 'Fecha'
+                        }
+                    },
+                    y: {
+                        beginAtZero: false,
+                        title: {
+                            display: true,
+                            text: 'Beneficio (USDT)'
+                        }
+                    }
+                }
+            }
+        });
+    </script>
+</body>
+
+</html>
