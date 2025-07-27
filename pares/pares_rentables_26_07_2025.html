@@ -56,9 +56,11 @@
         </div>
     </div>
 
-
     <script type="module">
-        import { csvData } from '../data.js'; // Asegúrate de que la ruta sea correcta
+        // Importar csvData desde el archivo externo data.js
+        // Asegúrate de que el archivo 'data.js' exista en el mismo directorio
+        // y contenga 'export const csvData = `...`;'
+        import { csvData } from './data.js';
 
         function parseCSV(csvString) {
             const lines = csvString.trim().split('\n');
@@ -67,10 +69,13 @@
 
             for (let i = 1; i < lines.length; i++) {
                 const currentLine = lines[i].split(',');
-                // Ensure the line is not empty and has the correct number of columns
-                if (currentLine.length === headers.length && currentLine.every(cell => cell.trim() !== '')) {
+                // Asegurarse de que la línea no esté vacía y tenga el número correcto de columnas
+                // Se ha modificado la condición para permitir celdas vacías, ya que el CSV original las tiene.
+                // La condición `currentLine.length === headers.length` es suficiente si el CSV está bien formado.
+                if (currentLine.length === headers.length) {
                     const row = {};
                     for (let j = 0; j < headers.length; j++) {
+                        // Usar trim() para limpiar espacios en blanco alrededor de los valores.
                         row[headers[j].trim()] = currentLine[j].trim();
                     }
                     data.push(row);
@@ -81,69 +86,46 @@
 
         const parsedData = parseCSV(csvData);
 
-
-
-
-        function parseCSV(csvString) {
-            const lines = csvString.trim().split('\n');
-            const headers = lines[0].split(',');
-            const data = [];
-
-            for (let i = 1; i < lines.length; i++) {
-                const currentLine = lines[i].split(',');
-                // Ensure the line is not empty and has the correct number of columns
-                if (currentLine.length === headers.length && currentLine.every(cell => cell.trim() !== '')) {
-                    const row = {};
-                    for (let j = 0; j < headers.length; j++) {
-                        row[headers[j].trim()] = currentLine[j].trim();
-                    }
-                    data.push(row);
-                }
-            }
-            return data;
-        }
-
-        const parsedData = parseCSV(csvData);
-
-        // Calculate total profit/loss per symbol
+        // Calcular el beneficio/pérdida total por símbolo
         const symbolProfits = {};
         parsedData.forEach(row => {
-            // Only consider 'VENTA' (sell) transactions with a valid 'ganancia_usdt'
+            // Solo considerar transacciones de 'VENTA' con un 'ganancia_usdt' válido
+            // y que no sean la línea de resumen total.
             if (row.tipo === 'VENTA' && row.ganancia_usdt && row.ganancia_usdt !== 'Beneficio Total Acumulado') {
                 const profit = parseFloat(row.ganancia_usdt);
                 const symbol = row.symbol;
-                if (!isNaN(profit)) { // Ensure profit is a valid number
+                if (!isNaN(profit)) { // Asegurarse de que el beneficio sea un número válido
                     symbolProfits[symbol] = (symbolProfits[symbol] || 0) + profit;
                 }
             }
         });
 
-        // Convert to array of objects and sort by profit
+        // Convertir a array de objetos y ordenar por beneficio
         const sortedSymbolProfits = Object.keys(symbolProfits)
             .map(symbol => ({
                 symbol: symbol,
                 profit: symbolProfits[symbol]
             }))
-            .sort((a, b) => b.profit - a.profit); // Sort descending
+            .sort((a, b) => b.profit - a.profit); // Ordenar de forma descendente
 
         const labels = sortedSymbolProfits.map(d => d.symbol);
         const data = sortedSymbolProfits.map(d => d.profit);
 
-        // Function to get color based on profit/loss
+        // Función para obtener el color de la barra según el beneficio/pérdida
         function getBarColor(profit) {
             if (profit > 0) {
-                return 'rgba(75, 192, 192, 0.8)'; // Greenish for profit
+                return 'rgba(75, 192, 192, 0.8)'; // Verdoso para ganancia
             } else if (profit < 0) {
-                return 'rgba(255, 99, 132, 0.8)'; // Reddish for loss
+                return 'rgba(255, 99, 132, 0.8)'; // Rojizo para pérdida
             } else {
-                return 'rgba(200, 200, 200, 0.8)'; // Grey for zero profit/loss
+                return 'rgba(200, 200, 200, 0.8)'; // Gris para beneficio/pérdida cero
             }
         }
 
         const backgroundColors = data.map(getBarColor);
         const borderColors = backgroundColors.map(color => color.replace('0.8', '1'));
 
-        // --- Chart: Total Profit/Loss per Symbol ---
+        // --- Gráfico: Beneficio/Pérdida Total por Símbolo ---
         const ctxSymbol = document.getElementById('symbolProfitChart').getContext('2d');
         new Chart(ctxSymbol, {
             type: 'bar',
