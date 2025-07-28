@@ -1,4 +1,4 @@
-export const dailyProfitData = `
+export const csvData = `
 fecha,beneficio
 2025-07-19,-113.4462340000
 2025-07-20,814.9925230000
