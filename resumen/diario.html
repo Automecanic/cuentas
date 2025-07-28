@@ -50,28 +50,46 @@
         </div>
     </div>
 
-    <!-- Chart.js (solo esto, sin adaptadores) -->
+    <!-- Chart.js y adaptadores de fecha -->
     <script src="https://cdn.jsdelivr.net/npm/chart.js@3.9.1/dist/chart.min.js"></script>
+    <!-- INICIO DE MODIFICACIÓN -->
+    <!-- Se añadieron los adaptadores de fecha para Chart.js -->
+    <script src="https://cdn.jsdelivr.net/npm/date-fns@2.29.3"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chartjs-adapter-date-fns@3.0.0/dist/chartjs-adapter-date-fns.js"></script>
+    <!-- FIN DE MODIFICACIÓN -->
 
     <script type="module">
-        // Importar csvData desde el archivo externo data.js
-        // Asegúrate de que el archivo 'data.js' exista en el mismo directorio
-        // y contenga 'export const csvData = `...`;'
+        // Importar csvData desde el archivo externo data2.js
         import { csvData } from '../data2.js';
 
         // Procesar CSV
-        const lines = csvData.trim().split('\n');
-        const headers = lines[0].split(',');
-        const rawData = lines.slice(1).map(line => {
-            const [fecha, beneficio] = line.split(',');
-            return {
-                label: fecha,
-                value: parseFloat(beneficio)
-            };
-        });
+        function parseCSV(csvString) {
+            const lines = csvString.trim().split('\n');
+            const headers = lines[0].split(',').map(h => h.trim());
+            const data = [];
 
-        const labels = rawData.map(d => d.label);
-        const data = rawData.map(d => d.value);
+            for (let i = 1; i < lines.length; i++) {
+                const currentLine = lines[i].split(',');
+                if (currentLine.length === headers.length) {
+                    const row = {};
+                    row[headers[0]] = currentLine[0].trim();
+                    row[headers[1]] = parseFloat(currentLine[1].trim());
+                    data.push(row);
+                }
+            }
+            return data;
+        }
+
+        const parsedData = parseCSV(csvData);
+
+        const sortedDailyProfits = parsedData.map(d => {
+            const dateObj = new Date(d.fecha);
+            if (isNaN(dateObj.getTime())) return null;
+            return { date: dateObj, profit: d.beneficio };
+        }).filter(Boolean).sort((a, b) => a.date - b.date);
+
+        const labels = sortedDailyProfits.map(d => d.date);
+        const data = sortedDailyProfits.map(d => d.profit);
         const pointColors = data.map(v =>
             v > 0 ? 'rgba(75,192,192,1)' : v < 0 ? 'rgba(255,99,132,1)' : 'rgba(200,200,200,1)'
         );
@@ -109,19 +127,29 @@
                 },
                 scales: {
                     x: {
-                        type: 'category',
-                        title: {
-                            display: true,
-                            text: 'Fecha'
+                        <!-- INICIO DE MODIFICACIÓN -->
+                        < !--Se cambió el tipo de escala a 'time' y se configuró el formato de fecha. -- >
+                        type: 'time',
+                    time: {
+                        unit: 'day',
+                        tooltipFormat: 'yyyy-MM-dd',
+                        displayFormats: {
+                            day: 'MMM d'
                         }
                     },
-                    y: {
-                        beginAtZero: false,
-                        title: {
-                            display: true,
-                            text: 'Beneficio (USDT)'
-                        }
-                    }
+                        < !--FIN DE MODIFICACIÓN -- >
+                title: {
+            display: true,
+            text: 'Fecha'
+        }
+                    },
+            y: {
+            beginAtZero: false,
+            title: {
+                display: true,
+                text: 'Beneficio (USDT)'
+            }
+        }
                 }
             }
         });
