@@ -53,18 +53,11 @@
     <!-- Chart.js (solo esto, sin adaptadores) -->
     <script src="https://cdn.jsdelivr.net/npm/chart.js@3.9.1/dist/chart.min.js"></script>
 
-    <script>
-        const csvData = `fecha,beneficio
-2025-07-19,-14.869814
-2025-07-20,104.975420
-2025-07-21,124.908070
-2025-07-22,-19.924300
-2025-07-23,-704.148120
-2025-07-24,-16.894375
-2025-07-25,258.914106
-2025-07-26,820.686507
-  
-`;
+    <script type="module">
+        // Importar csvData desde el archivo externo data.js
+        // Asegúrate de que el archivo 'data.js' exista en el mismo directorio
+        // y contenga 'export const csvData = `...`;'
+        import { csvData } from '../data.js';
 
         // Procesar CSV
         const lines = csvData.trim().split('\n');
