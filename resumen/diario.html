@@ -2,8 +2,8 @@
 <html lang="es">
 
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>Gráfico de Beneficios Diarios</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <style>
@@ -21,37 +21,25 @@
             box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
         }
 
-        /* Contenedor del gráfico con scroll horizontal */
         .chart-scroll-container {
             position: relative;
             height: 500px;
-            /* Altura fija para el área visible del gráfico */
             width: 100%;
             overflow-x: auto;
-            /* Habilita el scroll horizontal */
             margin-bottom: 2rem;
             border-radius: 0.5rem;
-            /* Bordes redondeados para el contenedor de scroll */
             border: 1px solid #e5e7eb;
-            /* Borde sutil */
         }
 
-        /* Contenedor interno que tendrá el ancho dinámico para forzar el scroll */
         .chart-inner-wrapper {
-            /* El ancho se establecerá dinámicamente por JavaScript */
-            height: 100%;
-            /* Ocupa toda la altura del contenedor de scroll */
+            height: 500px;
             position: relative;
-            /* Necesario para que el canvas se posicione correctamente */
         }
 
         canvas {
             width: 100% !important;
-            /* Asegura que el canvas ocupe todo el ancho de su contenedor interno */
             height: 100% !important;
-            /* Asegura que el canvas ocupe toda la altura de su contenedor interno */
             display: block;
-            /* Elimina el espacio extra debajo del canvas */
         }
     </style>
 </head>
@@ -68,8 +56,9 @@
 
         <div class="mt-8 text-center">
             <a href="../index.html"
-                class="inline-flex items-center px-6 py-3 text-base font-medium text-white bg-gray-600 hover:bg-gray-700 rounded-md shadow-sm transition">←
-                Volver al Resumen</a>
+                class="inline-flex items-center px-6 py-3 text-base font-medium text-white bg-gray-600 hover:bg-gray-700 rounded-md shadow-sm transition">
+                ← Volver al Resumen
+            </a>
         </div>
     </div>
 
@@ -78,112 +67,97 @@
     <script src="https://cdn.jsdelivr.net/npm/date-fns@2.29.3"></script>
     <script src="https://cdn.jsdelivr.net/npm/chartjs-adapter-date-fns@3.0.0/dist/chartjs-adapter-date-fns.js"></script>
 
+    <!-- Tu script de importación y lógica de gráfico -->
     <script type="module">
-        // Importar csvData desde el archivo externo data2.js
         import { csvData } from '../data2.js';
 
-        // Procesar CSV
-        function parseCSV(csvString) {
-            const lines = csvString.trim().split('\n');
-            const headers = lines[0].split(',').map(h => h.trim());
-            const data = [];
+        document.addEventListener('DOMContentLoaded', () => {
+            // Parsear CSV
+            const parsedData = csvData.trim().split('\n').slice(1).map(line => {
+                const [fecha, beneficio] = line.split(',');
+                return {
+                    date: new Date(fecha),
+                    profit: parseFloat(beneficio)
+                };
+            });
 
-            for (let i = 1; i < lines.length; i++) {
-                const currentLine = lines[i].split(',');
-                if (currentLine.length === headers.length) {
-                    const row = {};
-                    row[headers[0]] = currentLine[0].trim();
-                    row[headers[1]] = parseFloat(currentLine[1].trim());
-                    data.push(row);
-                }
-            }
-            return data;
-        }
+            const labels = parsedData.map(d => d.date);
+            const data = parsedData.map(d => d.profit);
+            const pointColors = data.map(v =>
+                v > 0 ? 'rgba(75,192,192,1)' :
+                    v < 0 ? 'rgba(255,99,132,1)' :
+                        'rgba(200,200,200,1)'
+            );
 
-        const parsedData = parseCSV(csvData);
+            const chartInnerWrapper = document.getElementById('chartInnerWrapper');
+            const numDataPoints = data.length;
+            const minWidthPerPoint = 80;
+            const calculatedWidth = Math.max(chartInnerWrapper.offsetWidth, numDataPoints * minWidthPerPoint);
+            chartInnerWrapper.style.width = `${calculatedWidth}px`;
 
-        const sortedDailyProfits = parsedData.map(d => {
-            const dateObj = new Date(d.fecha);
-            if (isNaN(dateObj.getTime())) return null;
-            return { date: dateObj, profit: d.beneficio };
-        }).filter(Boolean).sort((a, b) => a.date - b.date);
+            const ctx = document.getElementById('dailyProfitChart').getContext('2d');
 
-        const labels = sortedDailyProfits.map(d => d.date);
-        const data = sortedDailyProfits.map(d => d.profit);
-        const pointColors = data.map(v =>
-            v > 0 ? 'rgba(75,192,192,1)' : v < 0 ? 'rgba(255,99,132,1)' : 'rgba(200,200,200,1)'
-        );
-
-        // Calcular el ancho dinámico para el contenedor interno del gráfico
-        const chartInnerWrapper = document.getElementById('chartInnerWrapper');
-        const numDataPoints = sortedDailyProfits.length;
-        const minWidthPerPoint = 80; // Ancho mínimo en píxeles por cada punto de datos/fecha
-        const calculatedWidth = Math.max(chartInnerWrapper.offsetWidth, numDataPoints * minWidthPerPoint);
-        chartInnerWrapper.style.width = `${calculatedWidth}px`;
-
-        const ctx = document.getElementById('dailyProfitChart').getContext('2d');
-        new Chart(ctx, {
-            type: 'line',
-            data: {
-                labels: labels,
-                datasets: [{
-                    label: 'Beneficio/Pérdida Diario (USDT)',
-                    data: data,
-                    fill: true,
-                    backgroundColor: 'rgba(75,192,192,0.2)',
-                    borderColor: 'rgba(75,192,192,1)',
-                    borderWidth: 2,
-                    tension: 0.3,
-                    pointBackgroundColor: pointColors,
-                    pointBorderColor: pointColors,
-                    pointRadius: 5,
-                    pointHoverRadius: 7
-                }]
-            },
-            options: {
-                responsive: true,
-                maintainAspectRatio: false, // Importante para que el ancho dinámico funcione
-                plugins: {
-                    tooltip: {
-                        callbacks: {
-                            label: function (context) {
-                                return `Beneficio Diario: ${context.raw.toFixed(2)} USDT`;
-                            }
-                        }
-                    }
+            new Chart(ctx, {
+                type: 'line',
+                data: {
+                    labels: labels,
+                    datasets: [{
+                        label: 'Beneficio/Pérdida Diario (USDT)',
+                        data: data,
+                        fill: true,
+                        backgroundColor: 'rgba(75,192,192,0.2)',
+                        borderColor: 'rgba(75,192,192,1)',
+                        borderWidth: 2,
+                        tension: 0.3,
+                        pointBackgroundColor: pointColors,
+                        pointBorderColor: pointColors,
+                        pointRadius: 5,
+                        pointHoverRadius: 7
+                    }]
                 },
-                scales: {
-                    x: {
-                        type: 'time',
-                        time: {
-                            unit: 'day',
-                            tooltipFormat: 'yyyy-MM-dd',
-                            displayFormats: {
-                                day: 'yyyy-MM-dd'
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                        tooltip: {
+                            callbacks: {
+                                label: function (context) {
+                                    return `Beneficio Diario: ${context.raw.toFixed(2)} USDT`;
+                                }
+                            }
+                        }
+                    },
+                    scales: {
+                        x: {
+                            type: 'time',
+                            time: {
+                                unit: 'day',
+                                tooltipFormat: 'yyyy-MM-dd',
+                                displayFormats: {
+                                    day: 'yyyy-MM-dd'
+                                }
+                            },
+                            title: {
+                                display: true,
+                                text: 'Fecha'
+                            },
+                            ticks: {
+                                autoSkip: false,
+                                maxTicksLimit: numDataPoints + 5,
+                                minRotation: 45,
+                                maxRotation: 45
                             }
                         },
-                        title: {
-                            display: true,
-                            text: 'Fecha'
-                        },
-                        ticks: {
-                            autoSkip: false, // Desactiva el auto-salto de etiquetas
-                            maxTicksLimit: numDataPoints + 5, // Permite más etiquetas que puntos de datos
-                            minRotation: 45, // Rotar etiquetas al menos 45 grados
-                            maxRotation: 45  // Rotar etiquetas como máximo 45 grados
-                        },
-                        min: sortedDailyProfits.length > 0 ? sortedDailyProfits[0].date.getTime() : undefined,
-                        max: sortedDailyProfits.length > 0 ? sortedDailyProfits[sortedDailyProfits.length - 1].date.getTime() : undefined
-                    },
-                    y: {
-                        beginAtZero: false,
-                        title: {
-                            display: true,
-                            text: 'Beneficio (USDT)'
+                        y: {
+                            beginAtZero: false,
+                            title: {
+                                display: true,
+                                text: 'Beneficio (USDT)'
+                            }
                         }
                     }
                 }
-            }
+            });
         });
     </script>
 </body>
