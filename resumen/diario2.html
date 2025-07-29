@@ -73,12 +73,12 @@
         </div>
     </div>
 
-    <!-- Chart.js y adaptadores de fecha -->
+    <!-- Chart.js CDN -->
     <script src="https://cdn.jsdelivr.net/npm/chart.js@3.9.1/dist/chart.min.js"></script>
-    <script src="https://cdn.jsdelivr.net/npm/date-fns@2.29.3"></script>
-    <script src="https://cdn.jsdelivr.net/npm/chartjs-adapter-date-fns@3.0.0/dist/chartjs-adapter-date-fns.js"></script>
 
     <script type="module">
+        // Importar date-fns y chartjs-adapter-date-fns como módulos ES
+        // Usando la versión ESM de date-fns y su adaptador
         import { parseISO, format } from 'https://cdn.jsdelivr.net/npm/date-fns@2.29.3/esm/index.js';
         import 'https://cdn.jsdelivr.net/npm/chartjs-adapter-date-fns@3.0.0/dist/chartjs-adapter-date-fns.esm.js';
 
@@ -106,7 +106,8 @@
         const parsedData = parseCSV(csvData);
 
         const sortedDailyProfits = parsedData.map(d => {
-            const dateObj = new Date(d.fecha);
+            // Usar parseISO de date-fns para parsear la fecha ISO 8601
+            const dateObj = parseISO(d.fecha);
             if (isNaN(dateObj.getTime())) return null;
             return { date: dateObj, profit: d.beneficio };
         }).filter(Boolean).sort((a, b) => a.date - b.date);
