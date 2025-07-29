@@ -2,13 +2,11 @@
 <html lang="es">
 
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta charset="UTF-8" />
     <title>Gráfico de Beneficios Diarios</title>
-    <script src="https://cdn.tailwindcss.com"></script>
     <style>
         body {
-            font-family: 'Inter', sans-serif;
+            font-family: sans-serif;
             background-color: #f3f4f6;
         }
 
@@ -21,111 +19,76 @@
             box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
         }
 
-        /* Contenedor del gráfico con scroll horizontal */
         .chart-scroll-container {
             position: relative;
             height: 500px;
-            /* Altura fija para el área visible del gráfico */
             width: 100%;
             overflow-x: auto;
-            /* Habilita el scroll horizontal */
             margin-bottom: 2rem;
-            border-radius: 0.5rem;
-            /* Bordes redondeados para el contenedor de scroll */
             border: 1px solid #e5e7eb;
-            /* Borde sutil */
+            border-radius: 0.5rem;
         }
 
-        /* Contenedor interno que tendrá el ancho dinámico para forzar el scroll */
         .chart-inner-wrapper {
-            /* El ancho se establecerá dinámicamente por JavaScript */
-            height: 100%;
-            /* Ocupa toda la altura del contenedor de scroll */
+            height: 500px;
             position: relative;
-            /* Necesario para que el canvas se posicione correctamente */
         }
 
         canvas {
             width: 100% !important;
-            /* Asegura que el canvas ocupe todo el ancho de su contenedor interno */
             height: 100% !important;
-            /* Asegura que el canvas ocupe toda la altura de su contenedor interno */
             display: block;
-            /* Elimina el espacio extra debajo del canvas */
         }
     </style>
 </head>
 
-<body class="p-4 bg-gray-100">
+<body>
     <div class="container">
-        <h1 class="text-3xl font-bold mb-6 text-center text-gray-800">Progresión de Beneficios Diarios (USDT)</h1>
+        <h1 class="text-3xl font-bold mb-6 text-center text-gray-800">
+            Progresión de Beneficios Diarios (USDT)
+        </h1>
 
         <div class="chart-scroll-container">
             <div id="chartInnerWrapper" class="chart-inner-wrapper">
                 <canvas id="dailyProfitChart"></canvas>
             </div>
         </div>
-
-        <div class="mt-8 text-center">
-            <a href="../index.html"
-                class="inline-flex items-center px-6 py-3 text-base font-medium text-white bg-gray-600 hover:bg-gray-700 rounded-md shadow-sm transition">←
-                Volver al Resumen</a>
-        </div>
     </div>
 
-    <!-- Chart.js CDN (eliminado de aquí para ser importado como módulo) -->
-
     <script type="module">
-        // Importar Chart.js como módulo ES
-        import { Chart } from 'https://cdn.jsdelivr.net/npm/chart.js@3.9.1/dist/chart.esm.js';
-        // Importar date-fns y chartjs-adapter-date-fns como módulos ES
-        import { parseISO, format } from 'https://cdn.jsdelivr.net/npm/date-fns@2.29.3/esm/index.js';
-        import 'https://cdn.jsdelivr.net/npm/chartjs-adapter-date-fns@3.0.0/dist/chartjs-adapter-date-fns.esm.js';
-
-        // Importar csvData desde el archivo externo dias.js
+        import { Chart, registerables } from 'https://cdn.jsdelivr.net/npm/chart.js@3.9.1/+esm';
         import { csvData } from '../dias.js';
+        import { parseISO } from 'https://cdn.jsdelivr.net/npm/date-fns@2.29.3/+esm';
+        import 'https://cdn.jsdelivr.net/npm/chartjs-adapter-date-fns@2.0.0/dist/chartjs-adapter-date-fns.bundle.min.js'; // 👈 usar versión bundle compatible
 
-        // Procesar CSV
-        function parseCSV(csvString) {
-            const lines = csvString.trim().split('\n');
-            const headers = lines[0].split(',').map(h => h.trim());
-            const data = [];
+        Chart.register(...registerables); // 👈 obligatorio para usar Chart.js 3.x+
 
-            for (let i = 1; i < lines.length; i++) {
-                const currentLine = lines[i].split(',');
-                if (currentLine.length === headers.length) {
-                    const row = {};
-                    row[headers[0]] = currentLine[0].trim();
-                    row[headers[1]] = parseFloat(currentLine[1].trim());
-                    data.push(row);
-                }
-            }
-            return data;
-        }
+        const parsedData = csvData
+            .trim()
+            .split('\n')
+            .slice(1)
+            .map(line => {
+                const [fecha, beneficio] = line.split(',');
+                return {
+                    date: parseISO(fecha),
+                    profit: parseFloat(beneficio)
+                };
+            });
 
-        const parsedData = parseCSV(csvData);
-
-        const sortedDailyProfits = parsedData.map(d => {
-            // Usar parseISO de date-fns para parsear la fecha ISO 8601
-            const dateObj = parseISO(d.fecha);
-            if (isNaN(dateObj.getTime())) return null;
-            return { date: dateObj, profit: d.beneficio };
-        }).filter(Boolean).sort((a, b) => a.date - b.date);
-
-        const labels = sortedDailyProfits.map(d => d.date);
-        const data = sortedDailyProfits.map(d => d.profit);
+        const sortedData = parsedData.filter(Boolean).sort((a, b) => a.date - b.date);
+        const labels = sortedData.map(d => d.date);
+        const data = sortedData.map(d => d.profit);
         const pointColors = data.map(v =>
             v > 0 ? 'rgba(75,192,192,1)' : v < 0 ? 'rgba(255,99,132,1)' : 'rgba(200,200,200,1)'
         );
 
-        // Calcular el ancho dinámico para el contenedor interno del gráfico
         const chartInnerWrapper = document.getElementById('chartInnerWrapper');
-        const numDataPoints = sortedDailyProfits.length;
-        const minWidthPerPoint = 80; // Ancho mínimo en píxeles por cada punto de datos/fecha
-        const calculatedWidth = Math.max(chartInnerWrapper.offsetWidth, numDataPoints * minWidthPerPoint);
+        const minWidthPerPoint = 80;
+        const calculatedWidth = Math.max(chartInnerWrapper.offsetWidth, data.length * minWidthPerPoint);
         chartInnerWrapper.style.width = `${calculatedWidth}px`;
 
         const ctx = document.getElementById('dailyProfitChart').getContext('2d');
+
         new Chart(ctx, {
             type: 'line',
             data: {
@@ -146,7 +109,7 @@
             },
             options: {
                 responsive: true,
-                maintainAspectRatio: false, // Importante para que el ancho dinámico funcione
+                maintainAspectRatio: false,
                 plugins: {
                     tooltip: {
                         callbacks: {
@@ -171,13 +134,11 @@
                             text: 'Fecha'
                         },
                         ticks: {
-                            autoSkip: false, // Desactiva el auto-salto de etiquetas
-                            maxTicksLimit: numDataPoints + 5, // Permite más etiquetas que puntos de datos
-                            minRotation: 45, // Rotar etiquetas al menos 45 grados
-                            maxRotation: 45  // Rotar etiquetas como máximo 45 grados
-                        },
-                        min: sortedDailyProfits.length > 0 ? sortedDailyProfits[0].date.getTime() : undefined,
-                        max: sortedDailyProfits.length > 0 ? sortedDailyProfits[sortedDailyProfits.length - 1].date.getTime() : undefined
+                            autoSkip: false,
+                            maxTicksLimit: data.length + 5,
+                            minRotation: 45,
+                            maxRotation: 45
+                        }
                     },
                     y: {
                         beginAtZero: false,
