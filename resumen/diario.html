@@ -29,8 +29,12 @@
         }
 
         canvas {
-            width: 100%;
-            height: 100%;
+            width: 100% !important;
+            /* Asegura que el canvas ocupe todo el ancho de su contenedor */
+            height: 100% !important;
+            /* Asegura que el canvas ocupe toda la altura de su contenedor */
+            display: block;
+            /* Elimina el espacio extra debajo del canvas */
         }
     </style>
 </head>
@@ -40,7 +44,10 @@
         <h1 class="text-3xl font-bold mb-6 text-center text-gray-800">Progresión de Beneficios Diarios (USDT)</h1>
 
         <div class="chart-container">
-            <canvas id="dailyProfitChart" width="800" height="500"></canvas>
+            <!-- INICIO DE MODIFICACIÓN -->
+            <!-- Se eliminaron los atributos 'width' y 'height' para que el tamaño sea controlado por CSS -->
+            <canvas id="dailyProfitChart"></canvas>
+            <!-- FIN DE MODIFICACIÓN -->
         </div>
 
         <div class="mt-8 text-center">
@@ -128,21 +135,26 @@
                         time: {
                             unit: 'day',
                             tooltipFormat: 'yyyy-MM-dd',
-                            // INICIO DE MODIFICACIÓN
                             displayFormats: {
-                                day: 'yyyy-MM-dd' // Cambiado a formato YYYY-MM-DD
+                                day: 'yyyy-MM-dd'
                             }
-                            // FIN DE MODIFICACIÓN
                         },
                         title: {
                             display: true,
                             text: 'Fecha'
                         },
-                        // INICIO DE MODIFICACIÓN
                         ticks: {
                             autoSkip: false, // Desactiva el auto-salto de etiquetas
-                            maxTicksLimit: 31 // Permite hasta 31 etiquetas (para un mes)
-                        }
+                            maxTicksLimit: 31, // Permite hasta 31 etiquetas (para un mes)
+                            // INICIO DE MODIFICACIÓN
+                            minRotation: 45, // Rotar etiquetas al menos 45 grados
+                            maxRotation: 45  // Rotar etiquetas como máximo 45 grados
+                            // FIN DE MODIFICACIÓN
+                        },
+                        // INICIO DE MODIFICACIÓN
+                        // Establecer min y max explícitamente para el rango del eje
+                        min: sortedDailyProfits.length > 0 ? sortedDailyProfits[0].date.getTime() : undefined,
+                        max: sortedDailyProfits.length > 0 ? sortedDailyProfits[sortedDailyProfits.length - 1].date.getTime() : undefined
                         // FIN DE MODIFICACIÓN
                     },
                     y: {
