@@ -52,11 +52,8 @@
 
     <!-- Chart.js y adaptadores de fecha -->
     <script src="https://cdn.jsdelivr.net/npm/chart.js@3.9.1/dist/chart.min.js"></script>
-    <!-- INICIO DE MODIFICACIÓN -->
-    <!-- Se añadieron los adaptadores de fecha para Chart.js -->
     <script src="https://cdn.jsdelivr.net/npm/date-fns@2.29.3"></script>
     <script src="https://cdn.jsdelivr.net/npm/chartjs-adapter-date-fns@3.0.0/dist/chartjs-adapter-date-fns.js"></script>
-    <!-- FIN DE MODIFICACIÓN -->
 
     <script type="module">
         // Importar csvData desde el archivo externo data2.js
@@ -127,29 +124,34 @@
                 },
                 scales: {
                     x: {
-                        <!-- INICIO DE MODIFICACIÓN -->
-                        < !--Se cambió el tipo de escala a 'time' y se configuró el formato de fecha. -- >
                         type: 'time',
-                    time: {
-                        unit: 'day',
-                        tooltipFormat: 'yyyy-MM-dd',
-                        displayFormats: {
-                            day: 'MMM d'
+                        time: {
+                            unit: 'day',
+                            tooltipFormat: 'yyyy-MM-dd',
+                            // INICIO DE MODIFICACIÓN
+                            displayFormats: {
+                                day: 'yyyy-MM-dd' // Cambiado a formato YYYY-MM-DD
+                            }
+                            // FIN DE MODIFICACIÓN
+                        },
+                        title: {
+                            display: true,
+                            text: 'Fecha'
+                        },
+                        // INICIO DE MODIFICACIÓN
+                        ticks: {
+                            autoSkip: false, // Desactiva el auto-salto de etiquetas
+                            maxTicksLimit: 31 // Permite hasta 31 etiquetas (para un mes)
                         }
+                        // FIN DE MODIFICACIÓN
                     },
-                        < !--FIN DE MODIFICACIÓN -- >
-                title: {
-            display: true,
-            text: 'Fecha'
-        }
-                    },
-            y: {
-            beginAtZero: false,
-            title: {
-                display: true,
-                text: 'Beneficio (USDT)'
-            }
-        }
+                    y: {
+                        beginAtZero: false,
+                        title: {
+                            display: true,
+                            text: 'Beneficio (USDT)'
+                        }
+                    }
                 }
             }
         });
