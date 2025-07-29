@@ -4,16 +4,12 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Gráfica de Pares Más Rentables</title>
-    <!-- Tailwind CSS CDN -->
+    <title>Gráfico de Beneficios Diarios</title>
     <script src="https://cdn.tailwindcss.com"></script>
-    <!-- Chart.js CDN -->
-    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <style>
         body {
             font-family: 'Inter', sans-serif;
             background-color: #f3f4f6;
-            color: #333;
         }
 
         .container {
@@ -22,62 +18,82 @@
             padding: 1.5rem;
             background-color: #ffffff;
             border-radius: 0.75rem;
-            /* rounded-xl */
             box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
         }
 
-        .chart-container {
+        /* Contenedor del gráfico con scroll horizontal */
+        .chart-scroll-container {
             position: relative;
             height: 500px;
-            /* Increased height for better readability of many bars */
+            /* Altura fija para el área visible del gráfico */
             width: 100%;
+            overflow-x: auto;
+            /* Habilita el scroll horizontal */
             margin-bottom: 2rem;
+            border-radius: 0.5rem;
+            /* Bordes redondeados para el contenedor de scroll */
+            border: 1px solid #e5e7eb;
+            /* Borde sutil */
         }
 
-        h1,
-        h2 {
-            color: #1f2937;
-            font-weight: 700;
-            margin-bottom: 1rem;
-            text-align: center;
+        /* Contenedor interno que tendrá el ancho dinámico para forzar el scroll */
+        .chart-inner-wrapper {
+            /* El ancho se establecerá dinámicamente por JavaScript */
+            height: 100%;
+            /* Ocupa toda la altura del contenedor de scroll */
+            position: relative;
+            /* Necesario para que el canvas se posicione correctamente */
+        }
+
+        canvas {
+            width: 100% !important;
+            /* Asegura que el canvas ocupe todo el ancho de su contenedor interno */
+            height: 100% !important;
+            /* Asegura que el canvas ocupe toda la altura de su contenedor interno */
+            display: block;
+            /* Elimina el espacio extra debajo del canvas */
         }
     </style>
 </head>
 
 <body class="p-4 bg-gray-100">
-
     <div class="container">
-        <h1 class="text-3xl font-bold mb-6 text-center text-gray-800">Análisis de Pares de Trading por Rentabilidad</h1>
+        <h1 class="text-3xl font-bold mb-6 text-center text-gray-800">Progresión de Beneficios Diarios (USDT)</h1>
 
-        <div class="chart-container">
-            <h2 class="text-xl font-semibold mb-4 text-center text-gray-700">Beneficio/Pérdida Total por dia (USDT)
-            </h2>
-            <canvas id="symbolProfitChart"></canvas>
+        <div class="chart-scroll-container">
+            <div id="chartInnerWrapper" class="chart-inner-wrapper">
+                <canvas id="dailyProfitChart"></canvas>
+            </div>
+        </div>
+
+        <div class="mt-8 text-center">
+            <a href="../index.html"
+                class="inline-flex items-center px-6 py-3 text-base font-medium text-white bg-gray-600 hover:bg-gray-700 rounded-md shadow-sm transition">←
+                Volver al Resumen</a>
         </div>
     </div>
 
+    <!-- Chart.js y adaptadores de fecha -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@3.9.1/dist/chart.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/date-fns@2.29.3"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chartjs-adapter-date-fns@3.0.0/dist/chartjs-adapter-date-fns.js"></script>
+
     <script type="module">
-        // Importar csvData desde el archivo externo data.js
-        // Asegúrate de que el archivo 'data.js' exista en el mismo directorio
-        // y contenga 'export const csvData = `...`;'
+        // Importar csvData desde el archivo externo dias.js
         import { csvData } from '../dias.js';
 
+        // Procesar CSV
         function parseCSV(csvString) {
             const lines = csvString.trim().split('\n');
-            const headers = lines[0].split(',');
+            const headers = lines[0].split(',').map(h => h.trim());
             const data = [];
 
             for (let i = 1; i < lines.length; i++) {
                 const currentLine = lines[i].split(',');
-                // Asegurarse de que la línea no esté vacía y tenga el número correcto de columnas
-                // Se ha modificado la condición para permitir celdas vacías, ya que el CSV original las tiene.
-                // La condición `currentLine.length === headers.length` es suficiente si el CSV está bien formado.
                 if (currentLine.length === headers.length) {
                     const row = {};
-                    for (let j = 0; j < headers.length; j++) {
-                        // Usar trim() para limpiar espacios en blanco alrededor de los valores.
-                        row[headers[j].trim()] = currentLine[j].trim();
-                    }
+                    row[headers[0]] = currentLine[0].trim();
+                    row[headers[1]] = parseFloat(currentLine[1].trim());
                     data.push(row);
                 }
             }
@@ -86,107 +102,90 @@
 
         const parsedData = parseCSV(csvData);
 
-        // Calcular el beneficio/pérdida total por símbolo
-        const symbolProfits = {};
-        parsedData.forEach(row => {
-            // Solo considerar transacciones de 'VENTA' con un 'ganancia_usdt' válido
-            // y que no sean la línea de resumen total.
-            if (row.tipo === 'VENTA' && row.ganancia_usdt && row.ganancia_usdt !== 'Beneficio Total Acumulado') {
-                const profit = parseFloat(row.ganancia_usdt);
-                const symbol = row.symbol;
-                if (!isNaN(profit)) { // Asegurarse de que el beneficio sea un número válido
-                    symbolProfits[symbol] = (symbolProfits[symbol] || 0) + profit;
-                }
-            }
-        });
+        const sortedDailyProfits = parsedData.map(d => {
+            const dateObj = new Date(d.fecha);
+            if (isNaN(dateObj.getTime())) return null;
+            return { date: dateObj, profit: d.beneficio };
+        }).filter(Boolean).sort((a, b) => a.date - b.date);
 
-        // Convertir a array de objetos y ordenar por beneficio
-        const sortedSymbolProfits = Object.keys(symbolProfits)
-            .map(symbol => ({
-                symbol: symbol,
-                profit: symbolProfits[symbol]
-            }))
-            .sort((a, b) => b.profit - a.profit); // Ordenar de forma descendente
+        const labels = sortedDailyProfits.map(d => d.date);
+        const data = sortedDailyProfits.map(d => d.profit);
+        const pointColors = data.map(v =>
+            v > 0 ? 'rgba(75,192,192,1)' : v < 0 ? 'rgba(255,99,132,1)' : 'rgba(200,200,200,1)'
+        );
 
-        const labels = sortedSymbolProfits.map(d => d.symbol);
-        const data = sortedSymbolProfits.map(d => d.profit);
+        // Calcular el ancho dinámico para el contenedor interno del gráfico
+        const chartInnerWrapper = document.getElementById('chartInnerWrapper');
+        const numDataPoints = sortedDailyProfits.length;
+        const minWidthPerPoint = 80; // Ancho mínimo en píxeles por cada punto de datos/fecha
+        const calculatedWidth = Math.max(chartInnerWrapper.offsetWidth, numDataPoints * minWidthPerPoint);
+        chartInnerWrapper.style.width = `${calculatedWidth}px`;
 
-        // Función para obtener el color de la barra según el beneficio/pérdida
-        function getBarColor(profit) {
-            if (profit > 0) {
-                return 'rgba(75, 192, 192, 0.8)'; // Verdoso para ganancia
-            } else if (profit < 0) {
-                return 'rgba(255, 99, 132, 0.8)'; // Rojizo para pérdida
-            } else {
-                return 'rgba(200, 200, 200, 0.8)'; // Gris para beneficio/pérdida cero
-            }
-        }
-
-        const backgroundColors = data.map(getBarColor);
-        const borderColors = backgroundColors.map(color => color.replace('0.8', '1'));
-
-        // --- Gráfico: Beneficio/Pérdida Total por Símbolo ---
-        const ctxSymbol = document.getElementById('symbolProfitChart').getContext('2d');
-        new Chart(ctxSymbol, {
-            type: 'bar',
+        const ctx = document.getElementById('dailyProfitChart').getContext('2d');
+        new Chart(ctx, {
+            type: 'line',
             data: {
                 labels: labels,
                 datasets: [{
-                    label: 'Beneficio/Pérdida Total (USDT)',
+                    label: 'Beneficio/Pérdida Diario (USDT)',
                     data: data,
-                    backgroundColor: backgroundColors,
-                    borderColor: borderColors,
-                    borderWidth: 1
+                    fill: true,
+                    backgroundColor: 'rgba(75,192,192,0.2)',
+                    borderColor: 'rgba(75,192,192,1)',
+                    borderWidth: 2,
+                    tension: 0.3,
+                    pointBackgroundColor: pointColors,
+                    pointBorderColor: pointColors,
+                    pointRadius: 5,
+                    pointHoverRadius: 7
                 }]
             },
             options: {
                 responsive: true,
-                maintainAspectRatio: false,
+                maintainAspectRatio: false, // Importante para que el ancho dinámico funcione
                 plugins: {
-                    title: {
-                        display: false,
-                        text: 'Beneficio/Pérdida Total por Símbolo (USDT)'
-                    },
                     tooltip: {
                         callbacks: {
                             label: function (context) {
-                                return `Total P&L: ${context.raw.toFixed(2)} USDT`;
+                                return `Beneficio Diario: ${context.raw.toFixed(2)} USDT`;
                             }
                         }
                     }
                 },
                 scales: {
                     x: {
+                        type: 'time',
+                        time: {
+                            unit: 'day',
+                            tooltipFormat: 'yyyy-MM-dd',
+                            displayFormats: {
+                                day: 'yyyy-MM-dd'
+                            }
+                        },
                         title: {
                             display: true,
-                            text: 'Símbolo de Trading'
+                            text: 'Fecha'
                         },
                         ticks: {
-                            autoSkip: false,
-                            maxRotation: 45,
-                            minRotation: 45
-                        }
+                            autoSkip: false, // Desactiva el auto-salto de etiquetas
+                            maxTicksLimit: numDataPoints + 5, // Permite más etiquetas que puntos de datos
+                            minRotation: 45, // Rotar etiquetas al menos 45 grados
+                            maxRotation: 45  // Rotar etiquetas como máximo 45 grados
+                        },
+                        min: sortedDailyProfits.length > 0 ? sortedDailyProfits[0].date.getTime() : undefined,
+                        max: sortedDailyProfits.length > 0 ? sortedDailyProfits[sortedDailyProfits.length - 1].date.getTime() : undefined
                     },
                     y: {
+                        beginAtZero: false,
                         title: {
                             display: true,
-                            text: 'Beneficio/Pérdida (USDT)'
-                        },
-                        beginAtZero: true
+                            text: 'Beneficio (USDT)'
+                        }
                     }
                 }
             }
         });
-
     </script>
-    <div class="bg-gradient-to-br from-blue-50 to-indigo-100 min-h-screen flex items-center justify-center p-4">
-        <div class="mt-8">
-            <a href="pares_rentables.html"
-                class="inline-flex items-center px-6 py-3 border border-transparent text-base font-medium rounded-md shadow-sm text-white bg-gray-600 hover:bg-gray-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-gray-500 transition-colors duration-300">
-                &larr; Volver al Resumen
-            </a>
-        </div>
-    </div>
 </body>
 
 </html>
