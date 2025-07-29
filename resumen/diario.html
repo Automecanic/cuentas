@@ -60,14 +60,11 @@
     <div class="container">
         <h1 class="text-3xl font-bold mb-6 text-center text-gray-800">Progresión de Beneficios Diarios (USDT)</h1>
 
-        <!-- INICIO DE MODIFICACIÓN -->
-        <!-- Nuevo contenedor para el scroll horizontal -->
         <div class="chart-scroll-container">
             <div id="chartInnerWrapper" class="chart-inner-wrapper">
                 <canvas id="dailyProfitChart"></canvas>
             </div>
         </div>
-        <!-- FIN DE MODIFICACIÓN -->
 
         <div class="mt-8 text-center">
             <a href="../index.html"
@@ -117,14 +114,12 @@
             v > 0 ? 'rgba(75,192,192,1)' : v < 0 ? 'rgba(255,99,132,1)' : 'rgba(200,200,200,1)'
         );
 
-        // INICIO DE MODIFICACIÓN
         // Calcular el ancho dinámico para el contenedor interno del gráfico
         const chartInnerWrapper = document.getElementById('chartInnerWrapper');
         const numDataPoints = sortedDailyProfits.length;
         const minWidthPerPoint = 80; // Ancho mínimo en píxeles por cada punto de datos/fecha
         const calculatedWidth = Math.max(chartInnerWrapper.offsetWidth, numDataPoints * minWidthPerPoint);
         chartInnerWrapper.style.width = `${calculatedWidth}px`;
-        // FIN DE MODIFICACIÓN
 
         const ctx = document.getElementById('dailyProfitChart').getContext('2d');
         new Chart(ctx, {
