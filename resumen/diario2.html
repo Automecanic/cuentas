@@ -3,6 +3,7 @@
 
 <head>
     <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>Gráfico de Beneficios Diarios</title>
     <style>
         body {
@@ -25,8 +26,8 @@
             width: 100%;
             overflow-x: auto;
             margin-bottom: 2rem;
-            border: 1px solid #e5e7eb;
             border-radius: 0.5rem;
+            border: 1px solid #e5e7eb;
         }
 
         .chart-inner-wrapper {
@@ -57,11 +58,11 @@
 
     <script type="module">
         import { Chart, registerables } from 'https://cdn.jsdelivr.net/npm/chart.js@3.9.1/+esm';
-        import { csvData } from '../dias.js';
         import { parseISO } from 'https://cdn.jsdelivr.net/npm/date-fns@2.29.3/+esm';
-        import 'https://cdn.jsdelivr.net/npm/chartjs-adapter-date-fns@2.0.0/dist/chartjs-adapter-date-fns.bundle.min.js'; // 👈 usar versión bundle compatible
+        import 'https://cdn.jsdelivr.net/npm/chartjs-adapter-date-fns@2.0.0/dist/chartjs-adapter-date-fns.bundle.min.js';
+        import { csvData } from './dias.js';
 
-        Chart.register(...registerables); // 👈 obligatorio para usar Chart.js 3.x+
+        Chart.register(...registerables);
 
         const parsedData = csvData
             .trim()
