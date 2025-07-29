@@ -21,18 +21,35 @@
             box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
         }
 
-        .chart-container {
+        /* Contenedor del gráfico con scroll horizontal */
+        .chart-scroll-container {
             position: relative;
             height: 500px;
+            /* Altura fija para el área visible del gráfico */
             width: 100%;
+            overflow-x: auto;
+            /* Habilita el scroll horizontal */
             margin-bottom: 2rem;
+            border-radius: 0.5rem;
+            /* Bordes redondeados para el contenedor de scroll */
+            border: 1px solid #e5e7eb;
+            /* Borde sutil */
+        }
+
+        /* Contenedor interno que tendrá el ancho dinámico para forzar el scroll */
+        .chart-inner-wrapper {
+            /* El ancho se establecerá dinámicamente por JavaScript */
+            height: 100%;
+            /* Ocupa toda la altura del contenedor de scroll */
+            position: relative;
+            /* Necesario para que el canvas se posicione correctamente */
         }
 
         canvas {
             width: 100% !important;
-            /* Asegura que el canvas ocupe todo el ancho de su contenedor */
+            /* Asegura que el canvas ocupe todo el ancho de su contenedor interno */
             height: 100% !important;
-            /* Asegura que el canvas ocupe toda la altura de su contenedor */
+            /* Asegura que el canvas ocupe toda la altura de su contenedor interno */
             display: block;
             /* Elimina el espacio extra debajo del canvas */
         }
@@ -43,12 +60,14 @@
     <div class="container">
         <h1 class="text-3xl font-bold mb-6 text-center text-gray-800">Progresión de Beneficios Diarios (USDT)</h1>
 
-        <div class="chart-container">
-            <!-- INICIO DE MODIFICACIÓN -->
-            <!-- Se eliminaron los atributos 'width' y 'height' para que el tamaño sea controlado por CSS -->
-            <canvas id="dailyProfitChart"></canvas>
-            <!-- FIN DE MODIFICACIÓN -->
+        <!-- INICIO DE MODIFICACIÓN -->
+        <!-- Nuevo contenedor para el scroll horizontal -->
+        <div class="chart-scroll-container">
+            <div id="chartInnerWrapper" class="chart-inner-wrapper">
+                <canvas id="dailyProfitChart"></canvas>
+            </div>
         </div>
+        <!-- FIN DE MODIFICACIÓN -->
 
         <div class="mt-8 text-center">
             <a href="../index.html"
@@ -98,6 +117,15 @@
             v > 0 ? 'rgba(75,192,192,1)' : v < 0 ? 'rgba(255,99,132,1)' : 'rgba(200,200,200,1)'
         );
 
+        // INICIO DE MODIFICACIÓN
+        // Calcular el ancho dinámico para el contenedor interno del gráfico
+        const chartInnerWrapper = document.getElementById('chartInnerWrapper');
+        const numDataPoints = sortedDailyProfits.length;
+        const minWidthPerPoint = 80; // Ancho mínimo en píxeles por cada punto de datos/fecha
+        const calculatedWidth = Math.max(chartInnerWrapper.offsetWidth, numDataPoints * minWidthPerPoint);
+        chartInnerWrapper.style.width = `${calculatedWidth}px`;
+        // FIN DE MODIFICACIÓN
+
         const ctx = document.getElementById('dailyProfitChart').getContext('2d');
         new Chart(ctx, {
             type: 'line',
@@ -119,7 +147,7 @@
             },
             options: {
                 responsive: true,
-                maintainAspectRatio: false,
+                maintainAspectRatio: false, // Importante para que el ancho dinámico funcione
                 plugins: {
                     tooltip: {
                         callbacks: {
@@ -145,17 +173,12 @@
                         },
                         ticks: {
                             autoSkip: false, // Desactiva el auto-salto de etiquetas
-                            maxTicksLimit: 31, // Permite hasta 31 etiquetas (para un mes)
-                            // INICIO DE MODIFICACIÓN
+                            maxTicksLimit: numDataPoints + 5, // Permite más etiquetas que puntos de datos
                             minRotation: 45, // Rotar etiquetas al menos 45 grados
                             maxRotation: 45  // Rotar etiquetas como máximo 45 grados
-                            // FIN DE MODIFICACIÓN
                         },
-                        // INICIO DE MODIFICACIÓN
-                        // Establecer min y max explícitamente para el rango del eje
                         min: sortedDailyProfits.length > 0 ? sortedDailyProfits[0].date.getTime() : undefined,
                         max: sortedDailyProfits.length > 0 ? sortedDailyProfits[sortedDailyProfits.length - 1].date.getTime() : undefined
-                        // FIN DE MODIFICACIÓN
                     },
                     y: {
                         beginAtZero: false,
