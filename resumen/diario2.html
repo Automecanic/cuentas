@@ -5,47 +5,70 @@
     <meta charset="UTF-8" />
     <title>Gráfico de Beneficios por Día</title>
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script src="https://cdn.tailwindcss.com"></script>
     <style>
         body {
-            font-family: 'Inter', sans-serif;
-            background-color: #f3f4f6;
-            color: #333;
+            font-family: sans-serif;
+            background-color: #f9fafb;
+            padding: 2rem;
         }
 
         .container {
-            max-width: 1200px;
-            margin: 2rem auto;
-            padding: 1.5rem;
-            background-color: #ffffff;
-            border-radius: 0.75rem;
-            /* rounded-xl */
-            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+            max-width: 100%;
+            margin: auto;
+            background: white;
+            padding: 2rem;
+            border-radius: 8px;
+            box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);
         }
 
-        h1,
-        h2 {
-            color: #1f2937;
-            font-weight: 700;
-            margin-bottom: 1rem;
-            text-align: center;
+        .scroll-chart-wrapper {
+            overflow-x: auto;
+            border: 1px solid #ddd;
+            border-radius: 6px;
+            padding-bottom: 1rem;
         }
 
         canvas {
-            width: 100% !important;
             height: 400px !important;
+            min-width: 1000px;
+            /* se expandirá si hay muchos datos */
+        }
+
+        /* Botón que aparece al hacer scroll */
+        #boton-regreso {
+            opacity: 0;
+            transition: opacity 0.5s ease-in-out;
+        }
+
+        #boton-regreso.visible {
+            opacity: 1;
         }
     </style>
 </head>
 
 <body>
     <div class="container">
-        <h1>Gráfico de Beneficios por Día</h1>
-        <canvas id="grafico"></canvas>
+        <h1 class="text-3xl font-bold text-gray-800 text-center mb-6">Gráfico de Beneficios por Día</h1>
+
+        <!-- 🔄 Contenedor con scroll horizontal -->
+        <div class="scroll-chart-wrapper">
+            <canvas id="grafico"></canvas>
+        </div>
+    </div>
+
+    <!-- 🔽 Botón de regreso (aparece con scroll) -->
+    <div id="boton-regreso" class="fixed bottom-4 left-0 right-0 flex justify-center z-50">
+        <a href="../index.html"
+            class="inline-flex items-center px-6 py-3 border border-transparent text-base font-medium rounded-md shadow-sm text-white bg-gray-600 hover:bg-gray-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-gray-500 transition-colors duration-300 shadow-md">
+            &larr; Volver al Resumen
+        </a>
     </div>
 
     <script type="module">
         import { csvData } from './data2.js';
 
+        // Parsear CSV
         const datos = csvData.trim().split('\n').slice(1).map(linea => {
             const [fecha, beneficio] = linea.split(',');
             return {
@@ -54,7 +77,12 @@
             };
         });
 
-        const ctx = document.getElementById('grafico').getContext('2d');
+        // Adaptar el tamaño del canvas al número de datos
+        const canvas = document.getElementById('grafico');
+        const minWidthPerPoint = 80;
+        canvas.style.width = `${Math.max(1000, datos.length * minWidthPerPoint)}px`;
+
+        const ctx = canvas.getContext('2d');
 
         new Chart(ctx, {
             type: 'line',
@@ -64,13 +92,13 @@
                     data: datos,
                     borderColor: 'rgba(75,192,192,1)',
                     backgroundColor: 'rgba(75,192,192,0.2)',
-                    pointRadius: 4,
                     tension: 0.3,
+                    pointRadius: 4,
                     fill: true
                 }]
             },
             options: {
-                responsive: true,
+                responsive: false, // Para scroll horizontal
                 plugins: {
                     tooltip: {
                         callbacks: {
@@ -81,29 +109,25 @@
                 scales: {
                     x: {
                         type: 'category',
-                        title: {
-                            display: true,
-                            text: 'Fecha'
-                        }
+                        title: { display: true, text: 'Fecha' }
                     },
                     y: {
-                        title: {
-                            display: true,
-                            text: 'Capital (USDT)'
-                        }
+                        title: { display: true, text: 'Capital (USDT)' }
                     }
                 }
             }
         });
+
+        // Mostrar el botón al hacer scroll hacia abajo
+        const boton = document.getElementById('boton-regreso');
+        window.addEventListener('scroll', () => {
+            if (window.scrollY > 200) {
+                boton.classList.add('visible');
+            } else {
+                boton.classList.remove('visible');
+            }
+        });
     </script>
-    <div class="bg-gradient-to-br from-blue-50 to-indigo-100 min-h-screen flex items-center justify-center p-4">
-        <div class="mt-8">
-            <a href="../index.html"
-                class="inline-flex items-center px-6 py-3 border border-transparent text-base font-medium rounded-md shadow-sm text-white bg-gray-600 hover:bg-gray-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-gray-500 transition-colors duration-300">
-                &larr; Volver al Resumen
-            </a>
-        </div>
-    </div>
 </body>
 
 </html>
