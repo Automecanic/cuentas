@@ -2,103 +2,71 @@
 <html lang="es">
 
 <head>
-    <meta charset="UTF-8">
-    <title>Beneficios por Día</title>
+    <meta charset="UTF-8" />
+    <title>Gráfico de Beneficios por Día</title>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <style>
         body {
             font-family: sans-serif;
             background-color: #f9fafb;
-            margin: 0;
             padding: 2rem;
         }
 
         .container {
-            max-width: 1000px;
+            max-width: 800px;
             margin: auto;
             background: white;
             padding: 2rem;
-            border-radius: 0.5rem;
-            box-shadow: 0 0 10px rgba(0, 0, 0, 0.05);
-        }
-
-        canvas {
-            width: 100% !important;
-            height: 500px !important;
+            border-radius: 8px;
+            box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);
         }
 
         h1 {
             text-align: center;
             margin-bottom: 2rem;
         }
+
+        canvas {
+            width: 100% !important;
+            height: 400px !important;
+        }
     </style>
 </head>
 
 <body>
     <div class="container">
-        <h1>Beneficios por Día</h1>
-        <canvas id="graficoBeneficios"></canvas>
+        <h1>Gráfico de Beneficios por Día</h1>
+        <canvas id="grafico"></canvas>
     </div>
 
     <script type="module">
-        import { Chart, registerables } from 'https://cdn.jsdelivr.net/npm/chart.js@3.9.1/+esm';
-        import { parseISO } from 'https://cdn.jsdelivr.net/npm/date-fns@2.29.3/+esm';
-        import 'https://cdn.jsdelivr.net/npm/chartjs-adapter-date-fns@2.0.0/dist/chartjs-adapter-date-fns.bundle.min.js';
+        import { csvData } from './data2.js';
 
-        Chart.register(...registerables);
-
-        // ✅ Datos dinámicos
-        const csvData = `
-fecha,beneficio
-2025-07-19,-113.4462340000
-2025-07-20,814.9925230000
-2025-07-21,1274.3967560000
-2025-07-22,240.4831410000
-2025-07-23,-2854.1322170000
-2025-07-24,-70.8681250000
-2025-07-25,1109.7707460000
-2025-07-26,831.1113424000
-2025-07-27,37.6598890000
-2025-07-28,-17.4501930000
-2025-07-29,-42.4952940000
-2025-07-30,-0.0741840000
-`;
-
-        // ✅ Parseo CSV a objetos
-        const dataFiltrada = csvData.trim().split('\n').slice(1).map(linea => {
+        const datos = csvData.trim().split('\n').slice(1).map(linea => {
             const [fecha, beneficio] = linea.split(',');
             return {
-                fecha: parseISO(fecha),
-                beneficio: parseFloat(beneficio)
+                x: fecha,
+                y: parseFloat(beneficio)
             };
         });
 
-        const etiquetas = dataFiltrada.map(d => d.fecha);
-        const valores = dataFiltrada.map(d => d.beneficio);
-        const colores = valores.map(v => v >= 0 ? 'rgba(75,192,192,1)' : 'rgba(255,99,132,1)');
-
-        const ctx = document.getElementById('graficoBeneficios').getContext('2d');
+        const ctx = document.getElementById('grafico').getContext('2d');
 
         new Chart(ctx, {
             type: 'line',
             data: {
-                labels: etiquetas,
                 datasets: [{
-                    label: 'Capital por Día (USDT)',
-                    data: valores,
-                    borderColor: 'rgba(54, 162, 235, 1)',
-                    backgroundColor: 'rgba(54, 162, 235, 0.2)',
-                    pointBackgroundColor: colores,
-                    pointBorderColor: colores,
-                    tension: 0.3,
-                    borderWidth: 2,
+                    label: 'Capital (USDT)',
+                    data: datos,
+                    borderColor: 'rgba(75,192,192,1)',
+                    backgroundColor: 'rgba(75,192,192,0.2)',
                     pointRadius: 4,
-                    pointHoverRadius: 6,
+                    tension: 0.3,
                     fill: true
                 }]
             },
             options: {
                 responsive: true,
-                maintainAspectRatio: false,
                 plugins: {
                     tooltip: {
                         callbacks: {
@@ -108,22 +76,10 @@ fecha,beneficio
                 },
                 scales: {
                     x: {
-                        type: 'time',
-                        time: {
-                            unit: 'day',
-                            tooltipFormat: 'yyyy-MM-dd',
-                            displayFormats: {
-                                day: 'yyyy-MM-dd'
-                            }
-                        },
+                        type: 'category',
                         title: {
                             display: true,
-                            text: 'Día'
-                        },
-                        ticks: {
-                            autoSkip: false,
-                            minRotation: 45,
-                            maxRotation: 45
+                            text: 'Fecha'
                         }
                     },
                     y: {
