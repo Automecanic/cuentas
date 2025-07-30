@@ -2,110 +2,98 @@
 <html lang="es">
 
 <head>
-    <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>Gráfico de Beneficios Diarios</title>
+    <meta charset="UTF-8">
+    <title>Beneficios por Día</title>
     <style>
         body {
             font-family: sans-serif;
-            background-color: #f3f4f6;
+            background-color: #f9fafb;
+            margin: 0;
+            padding: 2rem;
         }
 
         .container {
-            max-width: 1200px;
-            margin: 2rem auto;
-            padding: 1.5rem;
-            background-color: #ffffff;
-            border-radius: 0.75rem;
-            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
-        }
-
-        .chart-scroll-container {
-            position: relative;
-            height: 500px;
-            width: 100%;
-            overflow-x: auto;
-            margin-bottom: 2rem;
+            max-width: 1000px;
+            margin: auto;
+            background: white;
+            padding: 2rem;
             border-radius: 0.5rem;
-            border: 1px solid #e5e7eb;
-        }
-
-        .chart-inner-wrapper {
-            height: 500px;
-            position: relative;
+            box-shadow: 0 0 10px rgba(0, 0, 0, 0.05);
         }
 
         canvas {
             width: 100% !important;
-            height: 100% !important;
-            display: block;
+            height: 500px !important;
+        }
+
+        h1 {
+            text-align: center;
+            margin-bottom: 2rem;
         }
     </style>
 </head>
 
 <body>
     <div class="container">
-        <h1 class="text-3xl font-bold mb-6 text-center text-gray-800">
-            Progresión de Beneficios Diarios (USDT)
-        </h1>
-
-        <div class="chart-scroll-container">
-            <div id="chartInnerWrapper" class="chart-inner-wrapper">
-                <canvas id="dailyProfitChart"></canvas>
-            </div>
-        </div>
+        <h1>Beneficios por Día</h1>
+        <canvas id="graficoBeneficios"></canvas>
     </div>
 
     <script type="module">
         import { Chart, registerables } from 'https://cdn.jsdelivr.net/npm/chart.js@3.9.1/+esm';
         import { parseISO } from 'https://cdn.jsdelivr.net/npm/date-fns@2.29.3/+esm';
         import 'https://cdn.jsdelivr.net/npm/chartjs-adapter-date-fns@2.0.0/dist/chartjs-adapter-date-fns.bundle.min.js';
-        import { csvData } from '../dias.js';
 
         Chart.register(...registerables);
 
-        const parsedData = csvData
-            .trim()
-            .split('\n')
-            .slice(1)
-            .map(line => {
-                const [fecha, beneficio] = line.split(',');
-                return {
-                    date: parseISO(fecha),
-                    profit: parseFloat(beneficio)
-                };
-            });
+        // ✅ Datos dinámicos
+        const csvData = `
+fecha,beneficio
+2025-07-19,-113.4462340000
+2025-07-20,814.9925230000
+2025-07-21,1274.3967560000
+2025-07-22,240.4831410000
+2025-07-23,-2854.1322170000
+2025-07-24,-70.8681250000
+2025-07-25,1109.7707460000
+2025-07-26,831.1113424000
+2025-07-27,37.6598890000
+2025-07-28,-17.4501930000
+2025-07-29,-42.4952940000
+2025-07-30,-0.0741840000
+`;
 
-        const sortedData = parsedData.filter(Boolean).sort((a, b) => a.date - b.date);
-        const labels = sortedData.map(d => d.date);
-        const data = sortedData.map(d => d.profit);
-        const pointColors = data.map(v =>
-            v > 0 ? 'rgba(75,192,192,1)' : v < 0 ? 'rgba(255,99,132,1)' : 'rgba(200,200,200,1)'
-        );
+        // ✅ Parseo CSV a objetos
+        const dataFiltrada = csvData.trim().split('\n').slice(1).map(linea => {
+            const [fecha, beneficio] = linea.split(',');
+            return {
+                fecha: parseISO(fecha),
+                beneficio: parseFloat(beneficio)
+            };
+        });
 
-        const chartInnerWrapper = document.getElementById('chartInnerWrapper');
-        const minWidthPerPoint = 80;
-        const calculatedWidth = Math.max(chartInnerWrapper.offsetWidth, data.length * minWidthPerPoint);
-        chartInnerWrapper.style.width = `${calculatedWidth}px`;
+        const etiquetas = dataFiltrada.map(d => d.fecha);
+        const valores = dataFiltrada.map(d => d.beneficio);
+        const colores = valores.map(v => v >= 0 ? 'rgba(75,192,192,1)' : 'rgba(255,99,132,1)');
 
-        const ctx = document.getElementById('dailyProfitChart').getContext('2d');
+        const ctx = document.getElementById('graficoBeneficios').getContext('2d');
 
         new Chart(ctx, {
             type: 'line',
             data: {
-                labels: labels,
+                labels: etiquetas,
                 datasets: [{
-                    label: 'Beneficio/Pérdida Diario (USDT)',
-                    data: data,
-                    fill: true,
-                    backgroundColor: 'rgba(75,192,192,0.2)',
-                    borderColor: 'rgba(75,192,192,1)',
-                    borderWidth: 2,
+                    label: 'Capital por Día (USDT)',
+                    data: valores,
+                    borderColor: 'rgba(54, 162, 235, 1)',
+                    backgroundColor: 'rgba(54, 162, 235, 0.2)',
+                    pointBackgroundColor: colores,
+                    pointBorderColor: colores,
                     tension: 0.3,
-                    pointBackgroundColor: pointColors,
-                    pointBorderColor: pointColors,
-                    pointRadius: 5,
-                    pointHoverRadius: 7
+                    borderWidth: 2,
+                    pointRadius: 4,
+                    pointHoverRadius: 6,
+                    fill: true
                 }]
             },
             options: {
@@ -114,9 +102,7 @@
                 plugins: {
                     tooltip: {
                         callbacks: {
-                            label: function (context) {
-                                return `Beneficio Diario: ${context.raw.toFixed(2)} USDT`;
-                            }
+                            label: ctx => `Capital: ${ctx.raw.toFixed(2)} USDT`
                         }
                     }
                 },
@@ -132,20 +118,18 @@
                         },
                         title: {
                             display: true,
-                            text: 'Fecha'
+                            text: 'Día'
                         },
                         ticks: {
                             autoSkip: false,
-                            maxTicksLimit: data.length + 5,
                             minRotation: 45,
                             maxRotation: 45
                         }
                     },
                     y: {
-                        beginAtZero: false,
                         title: {
                             display: true,
-                            text: 'Beneficio (USDT)'
+                            text: 'Capital (USDT)'
                         }
                     }
                 }
