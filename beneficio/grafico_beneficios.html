@@ -4,42 +4,369 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Gráficos de Rentabilidad</title>
+    <title>Gráfica de Transacciones del Bot</title>
     <!-- Tailwind CSS CDN -->
     <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Chart.js CDN -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <!-- Chart.js y adaptadores de fecha (necesarios para el eje de tiempo) -->
+    <script src="https://cdn.jsdelivr.net/npm/date-fns@2.29.3"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chartjs-adapter-date-fns@3.0.0/dist/chartjs-adapter-date-fns.js"></script>
+
     <style>
-        /* Custom styles for the Inter font */
         body {
             font-family: 'Inter', sans-serif;
+            background-color: #f3f4f6;
+            color: #333;
+        }
+
+        .container {
+            max-width: 1200px;
+            margin: 2rem auto;
+            padding: 1.5rem;
+            background-color: #ffffff;
+            border-radius: 0.75rem;
+            /* rounded-xl */
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+        }
+
+        /* Contenedor principal del gráfico, ahora con scroll horizontal */
+        .chart-scroll-container {
+            position: relative;
+            height: 40vh;
+            /* Altura relativa al viewport para mayor responsividad */
+            width: 100%;
+            overflow-x: auto;
+            /* Habilita el scroll horizontal */
+            margin-bottom: 2rem;
+            border: 1px solid #ddd;
+            border-radius: 6px;
+            padding: 2rem;
+        }
+
+        /* Contenedor interno que tendrá el ancho dinámico para forzar el scroll */
+        .chart-inner-wrapper {
+            /* El ancho se establecerá dinámicamente por JavaScript */
+            height: 100%;
+            /* Ocupa toda la altura del contenedor de scroll */
+            position: relative;
+            /* Necesario para que el canvas se posicione correctamente */
+        }
+
+        canvas {
+            width: 100% !important;
+            /* Asegura que el canvas ocupe todo el ancho de su contenedor interno */
+            height: 100% !important;
+            /* Asegura que el canvas ocupe toda la altura de su contenedor interno */
+            display: block;
+            /* Elimina el espacio extra debajo del canvas */
+        }
+
+        h1,
+        h2 {
+            color: #1f2937;
+            font-weight: 700;
+            margin-bottom: 1rem;
+            text-align: center;
+        }
+
+        .tooltip-custom {
+            background: rgba(0, 0, 0, 0.7);
+            color: white;
+            padding: 8px;
+            border-radius: 4px;
+            pointer-events: none;
+            opacity: 0;
+            position: absolute;
+            transform: translate(-50%, 0);
+            transition: opacity 0.2s ease-in-out;
+            z-index: 1000;
         }
     </style>
 </head>
 
 <body class="bg-gradient-to-br from-blue-50 to-indigo-100 min-h-screen flex items-center justify-center p-4">
-    <div class="bg-white p-8 rounded-xl shadow-2xl w-full max-w-lg text-center border border-gray-200">
-        <h1 class="text-4xl font-extrabold text-gray-900 mb-8 tracking-tight">Gráficos de Rentabilidad</h1>
+    <div class="container">
+        <h1 class="text-3xl font-bold mb-6 text-center text-gray-800">Análisis de Transacciones del Bot</h1>
 
-        <p class="text-lg text-gray-700 mb-6">Aquí puedes encontrar enlaces a diferentes análisis de rentabilidad de tu
-            bot:</p>
-
-        <div class="space-y-4">
-            <!-- Elemento de la lista 1 -->
-            <div
-                class="bg-blue-100 border border-blue-300 text-blue-800 p-4 rounded-lg shadow-sm flex items-center justify-between transition-transform hover:scale-105">
-                <span class="font-medium text-xl">📈 </span>
-                <a href="grafico_26_7_2525.html" class="text-blue-600 hover:text-blue-800 font-semibold">Ver
-                    Gráfico &rarr;</a>
+        <!-- Gráfico de Beneficio/Pérdida Acumulado -->
+        <div class="chart-scroll-container">
+            <div id="cumulativeProfitChartInnerWrapper" class="chart-inner-wrapper">
+                <h2 class="text-xl font-semibold mb-4 text-center text-gray-700">Beneficio/Pérdida Acumulado (USDT)</h2>
+                <canvas id="cumulativeProfitChart"></canvas>
             </div>
-
         </div>
 
-        <div class="mt-8">
+        <!-- Gráfico de Beneficio/Pérdida por Operación -->
+        <div class="chart-scroll-container">
+            <div id="individualProfitChartInnerWrapper" class="chart-inner-wrapper">
+                <h2 class="text-xl font-semibold mb-4 text-center text-gray-700">Beneficio/Pérdida por Operación (USDT)
+                </h2>
+                <canvas id="individualProfitChart"></canvas>
+            </div>
+        </div>
+
+        <div class="text-center mt-4">
             <a href="../index.html"
-                class="inline-flex items-center px-6 py-3 border border-transparent text-base font-medium rounded-md shadow-sm text-white bg-gray-600 hover:bg-gray-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-gray-500 transition-colors duration-300">
+                class="inline-flex items-center px-6 py-3 border border-transparent text-base font-medium rounded-md shadow-sm text-white bg-gray-600 hover:bg-gray-700 transition-colors duration-300">
                 &larr; Volver al Resumen
             </a>
         </div>
     </div>
+
+    <script type="module">
+        // Importar csvData desde el archivo externo data.js
+        import { csvData } from '../data.js';
+
+        function parseCSV(csvString) {
+            const lines = csvString.trim().split('\n');
+            const headers = lines[0].split(',').map(h => h.trim());
+            const data = [];
+
+            for (let i = 1; i < lines.length; i++) {
+                const currentLine = lines[i].split(',').map(c => c.trim());
+                if (currentLine.length === headers.length) {
+                    const row = {};
+                    for (let j = 0; j < headers.length; j++) {
+                        row[headers[j]] = currentLine[j];
+                    }
+                    data.push(row);
+                }
+            }
+            return data;
+        }
+
+        const parsedData = parseCSV(csvData);
+
+        // Filter out "COMPRA" transactions and the "RESUMEN_TOTAL" row for profit calculation
+        const profitLossData = parsedData.filter(row =>
+            row.tipo === 'VENTA' &&
+            row.ganancia_usdt !== '' &&
+            row.ganancia_usdt !== 'Beneficio Total Acumulado' // Exclude the summary row
+        );
+
+        // Sort data by timestamp for cumulative chart
+        profitLossData.sort((a, b) => new Date(a.timestamp) - new Date(b.timestamp));
+
+        let cumulativeProfit = 0;
+        const processedData = profitLossData.map(row => {
+            const profit = parseFloat(row.ganancia_usdt);
+            cumulativeProfit += profit;
+            return {
+                timestamp: new Date(row.timestamp),
+                cumulative: cumulativeProfit,
+                individualProfit: profit,
+                symbol: row.symbol,
+                reason: row.motivo_venta
+            };
+        });
+
+        // --- Generar un rango completo de fechas para el eje X ---
+        let allDates = [];
+        if (processedData.length > 0) {
+            const firstDate = new Date(processedData[0].timestamp);
+            const lastDate = new Date(processedData[processedData.length - 1].timestamp);
+            const today = new Date();
+            // Asegurarse de que el rango de fechas incluya al menos hasta hoy
+            const endDate = lastDate > today ? lastDate : today;
+
+            // Ajustar firstDate y endDate para que sean solo la fecha (sin hora)
+            firstDate.setHours(0, 0, 0, 0);
+            endDate.setHours(0, 0, 0, 0);
+
+            let currentDate = new Date(firstDate);
+            while (currentDate <= endDate) {
+                allDates.push(new Date(currentDate)); // Añadir una copia de la fecha
+                currentDate.setDate(currentDate.getDate() + 1);
+            }
+        }
+
+        // Mapear los datos procesados a las fechas completas
+        const cumulativeChartLabels = allDates.map(date => date.getTime()); // Usar timestamps para el eje de tiempo
+        const cumulativeChartData = allDates.map(date => {
+            const dataForDate = processedData.filter(d =>
+                d.timestamp.getFullYear() === date.getFullYear() &&
+                d.timestamp.getMonth() === date.getMonth() &&
+                d.timestamp.getDate() === date.getDate()
+            );
+            // Si hay datos para la fecha, usar el último beneficio acumulado de ese día
+            // Si no hay datos, usar el último beneficio acumulado conocido
+            if (dataForDate.length > 0) {
+                return dataForDate[dataForDate.length - 1].cumulative;
+            } else {
+                // Encontrar el último beneficio acumulado antes de esta fecha
+                const lastKnownDataBefore = processedData.filter(d => d.timestamp < date);
+                if (lastKnownDataBefore.length > 0) {
+                    return lastKnownDataBefore[lastKnownDataBefore.length - 1].cumulative;
+                }
+                return 0; // Si no hay datos previos, empezar en 0
+            }
+        });
+
+
+        // --- Chart 1: Cumulative Profit/Loss ---
+        const ctxCumulative = document.getElementById('cumulativeProfitChart').getContext('2d');
+        const cumulativeChartInnerWrapper = document.getElementById('cumulativeProfitChartInnerWrapper');
+        const numCumulativeDataPoints = cumulativeChartLabels.length;
+        const minWidthPerCumulativePoint = 40; // Ancho mínimo en píxeles por cada punto de datos/fecha
+        const calculatedCumulativeWidth = Math.max(cumulativeChartInnerWrapper.offsetWidth, numCumulativeDataPoints * minWidthPerCumulativePoint);
+        cumulativeChartInnerWrapper.style.width = `${calculatedCumulativeWidth}px`;
+
+        new Chart(ctxCumulative, {
+            type: 'line',
+            data: {
+                labels: cumulativeChartLabels, // Usar los timestamps generados
+                datasets: [{
+                    label: 'Beneficio/Pérdida Acumulado (USDT)',
+                    data: cumulativeChartData,
+                    borderColor: 'rgb(75, 192, 192)',
+                    tension: 0.1,
+                    fill: false,
+                    pointRadius: 3,
+                    pointHoverRadius: 7
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false, // Importante para que el ancho dinámico funcione
+                plugins: {
+                    title: {
+                        display: false,
+                        text: 'Beneficio/Pérdida Acumulado (USDT)'
+                    },
+                    tooltip: {
+                        callbacks: {
+                            title: function (context) {
+                                // Formatear la fecha para el tooltip
+                                return `Fecha: ${new Date(context[0].label).toLocaleDateString()}`;
+                            },
+                            label: function (context) {
+                                return `Acumulado: ${context.raw.toFixed(2)} USDT`;
+                            }
+                        }
+                    }
+                },
+                scales: {
+                    x: {
+                        type: 'time', // Cambiado a 'time'
+                        time: {
+                            unit: 'day', // Mostrar por día
+                            tooltipFormat: 'yyyy-MM-dd',
+                            displayFormats: {
+                                day: 'yyyy-MM-dd' // Formato de visualización en el eje
+                            }
+                        },
+                        title: {
+                            display: true,
+                            text: 'Fecha'
+                        },
+                        ticks: {
+                            autoSkip: false, // Desactiva el auto-salto de etiquetas
+                            maxTicksLimit: numCumulativeDataPoints + 5, // Permite más etiquetas que puntos de datos
+                            minRotation: 45, // Rotar etiquetas al menos 45 grados
+                            maxRotation: 45  // Rotar etiquetas como máximo 45 grados
+                        }
+                    },
+                    y: {
+                        title: {
+                            display: true,
+                            text: 'Beneficio/Pérdida Acumulado (USDT)'
+                        },
+                        beginAtZero: false // Permite valores negativos
+                    }
+                }
+            }
+        });
+
+        // --- Chart 2: Individual Profit/Loss ---
+        const ctxIndividual = document.getElementById('individualProfitChart').getContext('2d');
+        const individualChartInnerWrapper = document.getElementById('individualProfitChartInnerWrapper');
+        const numIndividualDataPoints = processedData.length; // Número de transacciones individuales
+        const minWidthPerIndividualPoint = 100; // Ancho mínimo por cada barra
+        const calculatedIndividualWidth = Math.max(individualChartInnerWrapper.offsetWidth, numIndividualDataPoints * minWidthPerIndividualPoint);
+        individualChartInnerWrapper.style.width = `${calculatedIndividualWidth}px`;
+
+        // Function to get color based on profit/loss or reason
+        function getBarColor(profit, reason) {
+            if (profit > 0) {
+                return 'rgba(75, 192, 192, 0.8)'; // Greenish for profit
+            } else if (profit < 0) {
+                return 'rgba(255, 99, 132, 0.8)'; // Reddish for loss
+            } else {
+                return 'rgba(200, 200, 200, 0.8)'; // Grey for zero profit/loss
+            }
+        }
+
+        new Chart(ctxIndividual, {
+            type: 'bar',
+            data: {
+                labels: processedData.map(d => d.timestamp.toLocaleString()), // Etiquetas de fecha y hora para cada operación
+                datasets: [{
+                    label: 'Beneficio/Pérdida por Operación (USDT)',
+                    data: processedData.map(d => d.individualProfit),
+                    backgroundColor: processedData.map(d => getBarColor(d.individualProfit, d.reason)),
+                    borderColor: processedData.map(d => getBarColor(d.individualProfit, d.reason).replace('0.8', '1')),
+                    borderWidth: 1
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false, // Importante para que el ancho dinámico funcione
+                plugins: {
+                    title: {
+                        display: false,
+                        text: 'Beneficio/Pérdida por Operación (USDT)'
+                    },
+                    tooltip: {
+                        callbacks: {
+                            title: function (context) {
+                                const dataPoint = processedData[context[0].dataIndex];
+                                return `Símbolo: ${dataPoint.symbol} - Fecha: ${dataPoint.timestamp.toLocaleString()}`;
+                            },
+                            label: function (context) {
+                                const dataPoint = processedData[context.dataIndex];
+                                return [
+                                    `P&L: ${context.raw.toFixed(2)} USDT`,
+                                    `Motivo: ${dataPoint.reason}`
+                                ];
+                            }
+                        }
+                    }
+                },
+                scales: {
+                    x: {
+                        type: 'time', // Cambiado a 'time'
+                        time: {
+                            unit: 'day', // Puedes ajustar a 'hour' o 'minute' si quieres más detalle
+                            tooltipFormat: 'yyyy-MM-dd HH:mm',
+                            displayFormats: {
+                                day: 'MMM d', // Formato de visualización en el eje para días
+                                hour: 'HH:mm', // Formato para horas si el unit es 'hour'
+                                minute: 'HH:mm' // Formato para minutos si el unit es 'minute'
+                            }
+                        },
+                        title: {
+                            display: true,
+                            text: 'Fecha y Hora de Venta'
+                        },
+                        ticks: {
+                            autoSkip: false, // Desactiva el auto-salto de etiquetas
+                            maxTicksLimit: numIndividualDataPoints + 5, // Permite más etiquetas que puntos de datos
+                            minRotation: 45, // Rotar etiquetas al menos 45 grados
+                            maxRotation: 45  // Rotar etiquetas como máximo 45 grados
+                        }
+                    },
+                    y: {
+                        title: {
+                            display: true,
+                            text: 'Beneficio/Pérdida (USDT)'
+                        },
+                        beginAtZero: true
+                    }
+                }
+            }
+        });
+    </script>
 </body>
 
 </html>
