@@ -5,20 +5,16 @@
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>Gráfica de Transacciones del Bot</title>
-
-    <!-- Tailwind CSS -->
     <script src="https://cdn.tailwindcss.com"></script>
-
-    <!-- Chart.js 4 -->
-    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
-
-    <!-- Adaptador de fechas con date-fns incluido -->
-    <script src="https://unpkg.com/chartjs-adapter-date-fns@3.0.0/dist/chartjs-adapter-date-fns.bundle.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chartjs-adapter-date-fns@3.0.0"></script>
+    <script src="https://cdn.jsdelivr.net/npm/date-fns@2.29.3"></script>
 
     <style>
         body {
             font-family: 'Inter', sans-serif;
             background-color: #f3f4f6;
+            color: #333;
         }
 
         .container {
@@ -32,103 +28,115 @@
 
         .chart-scroll-container {
             overflow-x: auto;
-            padding: 1rem;
+            margin-bottom: 2rem;
             border: 1px solid #e5e7eb;
             border-radius: 0.5rem;
-            margin-bottom: 2rem;
+            padding: 1rem;
         }
 
         .chart-inner-wrapper {
             min-width: 1000px;
-            /* ← Esto fuerza el scroll si hay pocos datos */
             width: max-content;
-            /* ← Se expande si hay muchos puntos */
             height: 400px;
+            position: relative;
         }
 
         canvas {
             width: 100% !important;
             height: 100% !important;
+            display: block;
+        }
+
+        h1,
+        h2 {
+            text-align: center;
+            font-weight: 700;
+            margin-bottom: 1rem;
         }
     </style>
 </head>
 
 <body class="bg-gradient-to-br from-blue-50 to-indigo-100 min-h-screen p-4">
     <div class="container">
-        <h1 class="text-3xl font-bold mb-6 text-center text-gray-800">Análisis de Transacciones del Bot</h1>
+        <h1 class="text-3xl mb-6 text-gray-800">Análisis de Transacciones del Bot</h1>
 
-        <!-- 📊 Gráfico acumulado -->
+        <!-- Gráfico Acumulado -->
         <div class="chart-scroll-container">
-            <div id="cumulativeWrapper" class="chart-inner-wrapper">
+            <div class="chart-inner-wrapper">
+                <h2 class="text-xl text-gray-700 mb-2">Beneficio/Pérdida Acumulado (USDT)</h2>
                 <canvas id="cumulativeChart"></canvas>
             </div>
         </div>
 
-        <!-- 📊 Gráfico individual -->
+        <!-- Gráfico por Operación -->
         <div class="chart-scroll-container">
-            <div id="individualWrapper" class="chart-inner-wrapper">
+            <div class="chart-inner-wrapper">
+                <h2 class="text-xl text-gray-700 mb-2">Beneficio/Pérdida por Operación (USDT)</h2>
                 <canvas id="individualChart"></canvas>
             </div>
         </div>
 
-        <!-- 🔙 Botón Volver -->
-        <div class="text-center mt-10">
+        <!-- Botón de regreso -->
+        <div class="text-center mt-8">
             <a href="../index.html"
-                class="inline-flex items-center px-6 py-3 border border-transparent text-base font-medium rounded-md shadow-sm text-white bg-gray-600 hover:bg-gray-700 transition">
-                &larr; Volver al Resumen
+                class="inline-flex items-center px-6 py-3 text-base font-medium text-white bg-gray-600 hover:bg-gray-700 rounded-md shadow-sm transition">
+                ← Volver al Resumen
             </a>
         </div>
     </div>
 
-    <script>
-        // 🔢 Datos de ejemplo
-        const csvData = `
-fecha,ganancia_usdt,tipo,symbol,motivo_venta,timestamp
-2025-07-19,-113.44,VENTA,BTCUSDT,estrategia A,2025-07-19T14:00:00
-2025-07-20,814.99,VENTA,ETHUSDT,estrategia B,2025-07-20T13:00:00
-2025-07-21,1274.39,VENTA,BNBUSDT,estrategia A,2025-07-21T12:00:00
-2025-07-22,240.48,VENTA,XRPUSDT,estrategia B,2025-07-22T15:00:00
-2025-07-23,-2854.13,VENTA,ADAUSDT,estrategia A,2025-07-23T10:00:00
-`;
+    <script type="module">
+        import { csvData } from '../data.js';
 
-        // 🧠 Parseo
-        function parseCSV(csv) {
-            const [headers, ...rows] = csv.trim().split('\n').map(l => l.split(','));
-            return rows.map(r => {
-                const obj = {};
-                headers.forEach((h, i) => obj[h.trim()] = r[i].trim());
-                return obj;
-            });
+        function parseCSV(csvString) {
+            const lines = csvString.trim().split('\n');
+            const headers = lines[0].split(',');
+            const data = [];
+            for (let i = 1; i < lines.length; i++) {
+                const row = {};
+                const values = lines[i].split(',');
+                if (values.length === headers.length) {
+                    headers.forEach((h, j) => {
+                        row[h.trim()] = values[j].trim();
+                    });
+                    data.push(row);
+                }
+            }
+            return data;
         }
 
-        const parsed = parseCSV(csvData).filter(r => r.tipo === 'VENTA');
+        const parsedData = parseCSV(csvData).filter(d =>
+            d.tipo === 'VENTA' &&
+            d.ganancia_usdt &&
+            d.ganancia_usdt !== 'Beneficio Total Acumulado'
+        ).sort((a, b) => new Date(a.timestamp) - new Date(b.timestamp));
 
         let cumulative = 0;
-        const data = parsed.map(r => {
-            const profit = parseFloat(r.ganancia_usdt);
+        const acumulado = parsedData.map(d => {
+            const profit = parseFloat(d.ganancia_usdt);
             cumulative += profit;
             return {
-                timestamp: new Date(r.timestamp),
-                cumulative,
-                individual: profit,
-                symbol: r.symbol,
-                reason: r.motivo_venta
+                fecha: new Date(d.timestamp),
+                profit: profit,
+                acumulado: cumulative,
+                simbolo: d.symbol,
+                motivo: d.motivo_venta
             };
         });
 
-        // 🎨 Chart 1: acumulado
-        new Chart(document.getElementById("cumulativeChart"), {
+        // Chart 1
+        new Chart(document.getElementById('cumulativeChart').getContext('2d'), {
             type: 'line',
             data: {
-                labels: data.map(d => d.timestamp),
+                labels: acumulado.map(d => d.fecha),
                 datasets: [{
-                    label: 'Beneficio Acumulado (USDT)',
-                    data: data.map(d => d.cumulative),
+                    label: 'Acumulado (USDT)',
+                    data: acumulado.map(d => d.acumulado),
+                    borderColor: 'rgb(75, 192, 192)',
+                    backgroundColor: 'rgba(75, 192, 192, 0.2)',
                     fill: true,
-                    borderColor: 'rgb(75,192,192)',
-                    backgroundColor: 'rgba(75,192,192,0.2)',
                     tension: 0.3,
-                    pointRadius: 4
+                    pointRadius: 3
                 }]
             },
             options: {
@@ -138,34 +146,34 @@ fecha,ganancia_usdt,tipo,symbol,motivo_venta,timestamp
                     x: {
                         type: 'time',
                         time: {
-                            unit: 'day'
+                            unit: 'day',
+                            tooltipFormat: 'yyyy-MM-dd',
+                            displayFormats: { day: 'yyyy-MM-dd' }
                         },
-                        title: {
-                            display: true,
-                            text: 'Fecha'
-                        }
+                        title: { display: true, text: 'Fecha' },
+                        ticks: { maxRotation: 45, minRotation: 45 }
                     },
                     y: {
-                        title: {
-                            display: true,
-                            text: 'USDT'
-                        }
+                        title: { display: true, text: 'USDT' },
+                        beginAtZero: false
                     }
                 }
             }
         });
 
-        // 🎨 Chart 2: individual
-        new Chart(document.getElementById("individualChart"), {
+        // Chart 2
+        new Chart(document.getElementById('individualChart').getContext('2d'), {
             type: 'bar',
             data: {
-                labels: data.map(d => d.timestamp),
+                labels: acumulado.map(d => `${d.simbolo} (${d.fecha.toLocaleDateString()})`),
                 datasets: [{
-                    label: 'Ganancia/Pérdida por Operación',
-                    data: data.map(d => d.individual),
-                    backgroundColor: data.map(d => d.individual > 0 ? 'rgba(75,192,192,0.8)' : 'rgba(255,99,132,0.8)'),
-                    borderColor: data.map(d => d.individual > 0 ? 'rgb(75,192,192)' : 'rgb(255,99,132)'),
-                    borderWidth: 1
+                    label: 'Ganancia por Operación (USDT)',
+                    data: acumulado.map(d => d.profit),
+                    backgroundColor: acumulado.map(d =>
+                        d.profit > 0 ? 'rgba(75, 192, 192, 0.8)' :
+                            d.profit < 0 ? 'rgba(255, 99, 132, 0.8)' :
+                                'rgba(200, 200, 200, 0.8)'
+                    )
                 }]
             },
             options: {
@@ -173,20 +181,13 @@ fecha,ganancia_usdt,tipo,symbol,motivo_venta,timestamp
                 maintainAspectRatio: false,
                 scales: {
                     x: {
-                        type: 'time',
-                        time: {
-                            unit: 'day'
-                        },
-                        title: {
-                            display: true,
-                            text: 'Fecha'
-                        }
+                        type: 'category',
+                        title: { display: true, text: 'Operación' },
+                        ticks: { maxRotation: 45, minRotation: 45 }
                     },
                     y: {
-                        title: {
-                            display: true,
-                            text: 'USDT'
-                        }
+                        beginAtZero: true,
+                        title: { display: true, text: 'USDT' }
                     }
                 }
             }
