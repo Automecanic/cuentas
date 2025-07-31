@@ -2,23 +2,23 @@
 <html lang="es">
 
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>Gráfica de Transacciones del Bot</title>
 
-    <!-- Tailwind CSS CDN -->
+    <!-- Tailwind CSS -->
     <script src="https://cdn.tailwindcss.com"></script>
 
-    <!-- Chart.js UMD + Adaptador de fechas (sin errores de tipo MIME) -->
+    <!-- Chart.js 4 -->
     <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
-    <script
-        src="https://cdn.jsdelivr.net/npm/chartjs-adapter-date-fns@3.0.0/dist/chartjs-adapter-date-fns.umd.min.js"></script>
+
+    <!-- Adaptador de fechas con date-fns incluido -->
+    <script src="https://unpkg.com/chartjs-adapter-date-fns@3.0.0/dist/chartjs-adapter-date-fns.bundle.js"></script>
 
     <style>
         body {
             font-family: 'Inter', sans-serif;
             background-color: #f3f4f6;
-            color: #333;
         }
 
         .container {
@@ -31,140 +31,102 @@
         }
 
         .chart-scroll-container {
-            position: relative;
-            height: 40vh;
-            min-height: 300px;
-            width: 100%;
             overflow-x: auto;
             margin-bottom: 2rem;
-            border: 1px solid #ddd;
-            border-radius: 6px;
-            padding: 2rem;
+            border: 1px solid #e5e7eb;
+            border-radius: 0.5rem;
+            padding: 1rem;
         }
 
         .chart-inner-wrapper {
-            height: 100%;
-            position: relative;
+            width: 100%;
+            min-width: 700px;
+            height: 400px;
         }
 
         canvas {
             width: 100% !important;
             height: 100% !important;
-            display: block;
-        }
-
-        h1,
-        h2 {
-            color: #1f2937;
-            font-weight: 700;
-            margin-bottom: 1rem;
-            text-align: center;
         }
     </style>
 </head>
 
 <body class="bg-gradient-to-br from-blue-50 to-indigo-100 min-h-screen p-4">
     <div class="container">
-        <h1 class="text-3xl font-bold mb-6">Análisis de Transacciones del Bot</h1>
+        <h1 class="text-3xl font-bold mb-6 text-center text-gray-800">Análisis de Transacciones del Bot</h1>
 
-        <!-- Gráfico acumulado -->
+        <!-- 📊 Gráfico acumulado -->
         <div class="chart-scroll-container">
-            <div id="cumulativeProfitChartInnerWrapper" class="chart-inner-wrapper">
-                <h2 class="text-xl mb-4">Beneficio/Pérdida Acumulado (USDT)</h2>
-                <canvas id="cumulativeProfitChart"></canvas>
+            <div id="cumulativeWrapper" class="chart-inner-wrapper">
+                <canvas id="cumulativeChart"></canvas>
             </div>
         </div>
 
-        <!-- Gráfico individual -->
+        <!-- 📊 Gráfico individual -->
         <div class="chart-scroll-container">
-            <div id="individualProfitChartInnerWrapper" class="chart-inner-wrapper">
-                <h2 class="text-xl mb-4">Beneficio/Pérdida por Operación (USDT)</h2>
-                <canvas id="individualProfitChart"></canvas>
+            <div id="individualWrapper" class="chart-inner-wrapper">
+                <canvas id="individualChart"></canvas>
             </div>
         </div>
 
-        <!-- Botón de regreso -->
-        <div class="text-center mt-6">
+        <!-- 🔙 Botón Volver -->
+        <div class="text-center mt-10">
             <a href="../index.html"
-                class="inline-flex items-center px-6 py-3 text-base font-medium text-white bg-gray-600 hover:bg-gray-700 rounded-md shadow-sm transition">
+                class="inline-flex items-center px-6 py-3 border border-transparent text-base font-medium rounded-md shadow-sm text-white bg-gray-600 hover:bg-gray-700 transition">
                 &larr; Volver al Resumen
             </a>
         </div>
     </div>
 
-    <script type="module">
-        import { csvData } from '../data.js'; // Asegúrate que esta ruta sea correcta
+    <script>
+        // 🔢 Datos de ejemplo
+        const csvData = `
+fecha,ganancia_usdt,tipo,symbol,motivo_venta,timestamp
+2025-07-19,-113.44,VENTA,BTCUSDT,estrategia A,2025-07-19T14:00:00
+2025-07-20,814.99,VENTA,ETHUSDT,estrategia B,2025-07-20T13:00:00
+2025-07-21,1274.39,VENTA,BNBUSDT,estrategia A,2025-07-21T12:00:00
+2025-07-22,240.48,VENTA,XRPUSDT,estrategia B,2025-07-22T15:00:00
+2025-07-23,-2854.13,VENTA,ADAUSDT,estrategia A,2025-07-23T10:00:00
+`;
 
-        function parseCSV(csvString) {
-            const lines = csvString.trim().split('\n');
-            const headers = lines[0].split(',').map(h => h.trim());
-            return lines.slice(1).map(line => {
-                const cells = line.split(',').map(c => c.trim());
-                return headers.reduce((acc, key, i) => {
-                    acc[key] = cells[i];
-                    return acc;
-                }, {});
+        // 🧠 Parseo
+        function parseCSV(csv) {
+            const [headers, ...rows] = csv.trim().split('\n').map(l => l.split(','));
+            return rows.map(r => {
+                const obj = {};
+                headers.forEach((h, i) => obj[h.trim()] = r[i].trim());
+                return obj;
             });
         }
 
-        const parsed = parseCSV(csvData).filter(r =>
-            r.tipo === 'VENTA' && r.ganancia_usdt !== '' && r.ganancia_usdt !== 'Beneficio Total Acumulado'
-        ).sort((a, b) => new Date(a.timestamp) - new Date(b.timestamp));
+        const parsed = parseCSV(csvData).filter(r => r.tipo === 'VENTA');
 
-        let acumulado = 0;
-        const procesados = parsed.map(r => {
-            const p = parseFloat(r.ganancia_usdt);
-            acumulado += p;
+        let cumulative = 0;
+        const data = parsed.map(r => {
+            const profit = parseFloat(r.ganancia_usdt);
+            cumulative += profit;
             return {
                 timestamp: new Date(r.timestamp),
-                acumulado,
-                individual: p,
+                cumulative,
+                individual: profit,
                 symbol: r.symbol,
-                motivo: r.motivo_venta
+                reason: r.motivo_venta
             };
         });
 
-        // Eje X: fechas completas desde la primera a hoy
-        const fechas = [];
-        if (procesados.length > 0) {
-            const start = new Date(procesados[0].timestamp);
-            const end = new Date();
-            start.setHours(0, 0, 0, 0);
-            end.setHours(0, 0, 0, 0);
-            const tmp = new Date(start);
-            while (tmp <= end) {
-                fechas.push(new Date(tmp));
-                tmp.setDate(tmp.getDate() + 1);
-            }
-        }
-
-        const acumuladoData = fechas.map(date => {
-            const match = procesados.filter(d =>
-                d.timestamp.getFullYear() === date.getFullYear() &&
-                d.timestamp.getMonth() === date.getMonth() &&
-                d.timestamp.getDate() === date.getDate()
-            );
-            if (match.length) return match[match.length - 1].acumulado;
-            const prev = procesados.filter(d => d.timestamp < date);
-            return prev.length ? prev[prev.length - 1].acumulado : 0;
-        });
-
-        // Establecer ancho del canvas para scroll horizontal
-        const wrapper1 = document.getElementById('cumulativeProfitChartInnerWrapper');
-        wrapper1.style.width = `${Math.max(wrapper1.offsetWidth, fechas.length * 40)}px`;
-
-        new Chart(document.getElementById('cumulativeProfitChart'), {
+        // 🎨 Chart 1: acumulado
+        new Chart(document.getElementById("cumulativeChart"), {
             type: 'line',
             data: {
-                labels: fechas,
+                labels: data.map(d => d.timestamp),
                 datasets: [{
-                    label: 'Beneficio Acumulado',
-                    data: acumuladoData,
+                    label: 'Beneficio Acumulado (USDT)',
+                    data: data.map(d => d.cumulative),
+                    fill: true,
                     borderColor: 'rgb(75,192,192)',
                     backgroundColor: 'rgba(75,192,192,0.2)',
-                    tension: 0.1,
-                    fill: true,
-                    pointRadius: 3
+                    tension: 0.3,
+                    pointRadius: 4
                 }]
             },
             options: {
@@ -174,33 +136,34 @@
                     x: {
                         type: 'time',
                         time: {
-                            unit: 'day',
-                            tooltipFormat: 'yyyy-MM-dd'
+                            unit: 'day'
                         },
-                        title: { display: true, text: 'Fecha' }
+                        title: {
+                            display: true,
+                            text: 'Fecha'
+                        }
                     },
                     y: {
-                        beginAtZero: false,
-                        title: { display: true, text: 'Beneficio (USDT)' }
+                        title: {
+                            display: true,
+                            text: 'USDT'
+                        }
                     }
                 }
             }
         });
 
-        // Gráfico individual
-        const wrapper2 = document.getElementById('individualProfitChartInnerWrapper');
-        wrapper2.style.width = `${Math.max(wrapper2.offsetWidth, procesados.length * 100)}px`;
-
-        const colores = v => v > 0 ? 'rgba(75,192,192,0.8)' : v < 0 ? 'rgba(255,99,132,0.8)' : 'rgba(200,200,200,0.8)';
-
-        new Chart(document.getElementById('individualProfitChart'), {
+        // 🎨 Chart 2: individual
+        new Chart(document.getElementById("individualChart"), {
             type: 'bar',
             data: {
-                labels: procesados.map(d => d.timestamp.toLocaleString()),
+                labels: data.map(d => d.timestamp),
                 datasets: [{
                     label: 'Ganancia/Pérdida por Operación',
-                    data: procesados.map(d => d.individual),
-                    backgroundColor: procesados.map(d => colores(d.individual))
+                    data: data.map(d => d.individual),
+                    backgroundColor: data.map(d => d.individual > 0 ? 'rgba(75,192,192,0.8)' : 'rgba(255,99,132,0.8)'),
+                    borderColor: data.map(d => d.individual > 0 ? 'rgb(75,192,192)' : 'rgb(255,99,132)'),
+                    borderWidth: 1
                 }]
             },
             options: {
@@ -209,12 +172,19 @@
                 scales: {
                     x: {
                         type: 'time',
-                        time: { unit: 'day', tooltipFormat: 'yyyy-MM-dd HH:mm' },
-                        title: { display: true, text: 'Fecha' }
+                        time: {
+                            unit: 'day'
+                        },
+                        title: {
+                            display: true,
+                            text: 'Fecha'
+                        }
                     },
                     y: {
-                        beginAtZero: true,
-                        title: { display: true, text: 'Ganancia/Pérdida (USDT)' }
+                        title: {
+                            display: true,
+                            text: 'USDT'
+                        }
                     }
                 }
             }
