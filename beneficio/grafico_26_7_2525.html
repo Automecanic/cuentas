@@ -31,11 +31,10 @@
             height: 400px;
             width: 100%;
             margin-bottom: 2rem;
-            overflow-x: auto;
-            overflow-y: auto;
+            overflow-x: scroll;
             border: 1px solid #ddd;
             border-radius: 6px;
-            padding: 1rem;
+            padding: 2rem;
 
         }
 
@@ -75,6 +74,18 @@
             <h2 class="text-xl font-semibold mb-4 text-center text-gray-700">Beneficio/Pérdida por Operación (USDT)</h2>
             <canvas id="individualProfitChart"></canvas>
         </div>
+
+        <div class="bg-gradient-to-br from-blue-50 to-indigo-100 min-h-screen flex items-center justify-center p-4">
+            <div class="mt-8">
+                <a href="../index.html"
+                    class="inline-flex items-center px-6 py-3 border border-transparent text-base font-medium rounded-md shadow-sm text-white bg-gray-600 hover:bg-gray-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-gray-500 transition-colors duration-300">
+                    &larr; Volver al Resumen
+                </a>
+            </div>
+        </div>
+
+
+
     </div>
     <script type="module">
         // Importar csvData desde el archivo externo data.js
@@ -256,14 +267,7 @@
             }
         });
     </script>
-    <div class="bg-gradient-to-br from-blue-50 to-indigo-100 min-h-screen flex items-center justify-center p-4">
-        <div class="mt-8">
-            <a href="../index.html"
-                class="inline-flex items-center px-6 py-3 border border-transparent text-base font-medium rounded-md shadow-sm text-white bg-gray-600 hover:bg-gray-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-gray-500 transition-colors duration-300">
-                &larr; Volver al Resumen
-            </a>
-        </div>
-    </div>
+
 </body>
 
 </html>
