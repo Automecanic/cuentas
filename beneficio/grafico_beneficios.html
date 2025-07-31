@@ -32,15 +32,17 @@
 
         .chart-scroll-container {
             overflow-x: auto;
-            margin-bottom: 2rem;
+            padding: 1rem;
             border: 1px solid #e5e7eb;
             border-radius: 0.5rem;
-            padding: 1rem;
+            margin-bottom: 2rem;
         }
 
         .chart-inner-wrapper {
-            width: 100%;
-            min-width: 700px;
+            min-width: 1000px;
+            /* ← Esto fuerza el scroll si hay pocos datos */
+            width: max-content;
+            /* ← Se expande si hay muchos puntos */
             height: 400px;
         }
 
