@@ -68,7 +68,7 @@
 
         <div class="chart-container">
             <h2 class="text-xl font-semibold mb-4 text-center text-gray-700">Beneficio/Pérdida Acumulado (USDT)</h2>
-            <div style="min-width: 1000px; display: inline-block;">
+            <div style="min-width: 1000px; display: inline-block;" id="canvas-wrapper">
                 <canvas id="cumulativeProfitChart"></canvas>
             </div>
 
@@ -76,7 +76,7 @@
 
         <div class="chart-container">
             <h2 class="text-xl font-semibold mb-4 text-center text-gray-700">Beneficio/Pérdida por Operación (USDT)</h2>
-            <div style="min-width: 1000px; display: inline-block;">
+            <div style="min-width: 1000px; display: inline-block;" id="canvas-wrapper">
                 <canvas id="individualProfitChart"></canvas>
             </div>
 
@@ -148,6 +148,15 @@
 
         // --- Chart 1: Cumulative Profit/Loss ---
         const ctxCumulative = document.getElementById('cumulativeProfitChart').getContext('2d');
+        const numDataPoints = cumulativeData.length;
+        const canvasWrapper = document.getElementById('cumulativeProfitChart').parentElement;
+
+        if (numDataPoints > 30) {
+            canvasWrapper.style.minWidth = `${numDataPoints * 40}px`; // 40px por punto
+        } else {
+            canvasWrapper.style.minWidth = '100%'; // No forzar ancho si hay pocos puntos
+        }
+
         new Chart(ctxCumulative, {
             type: 'line',
             data: {
