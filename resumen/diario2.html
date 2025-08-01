@@ -67,7 +67,7 @@
 
         // Adaptar tamaño del canvas al número de puntos
         const canvas = document.getElementById('grafico');
-        const minWidthPerPoint = 80;
+        const minWidthPerPoint = 10;
         canvas.style.width = `${Math.max(1000, datos.length * minWidthPerPoint)}px`;
 
         const ctx = canvas.getContext('2d');
