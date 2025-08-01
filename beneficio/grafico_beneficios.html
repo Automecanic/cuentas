@@ -2,14 +2,13 @@
 <html lang="es">
 
 <head>
-    <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Gráfica de Transacciones del Bot</title>
+    <!-- Tailwind CSS CDN -->
     <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Chart.js CDN -->
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
-    <script src="https://cdn.jsdelivr.net/npm/chartjs-adapter-date-fns@3.0.0"></script>
-    <script src="https://cdn.jsdelivr.net/npm/date-fns@2.29.3"></script>
-
     <style>
         body {
             font-family: 'Inter', sans-serif;
@@ -23,176 +22,258 @@
             padding: 1.5rem;
             background-color: #ffffff;
             border-radius: 0.75rem;
+            /* rounded-xl */
             box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
         }
 
-        .chart-scroll-container {
-            overflow-x: auto;
-            margin-bottom: 2rem;
-            border: 1px solid #e5e7eb;
-            border-radius: 0.5rem;
-            padding: 1rem;
-        }
-
-        .chart-inner-wrapper {
-            min-width: 1000px;
-            width: max-content;
-            height: 400px;
+        .chart-container {
             position: relative;
-        }
-
-        canvas {
-            width: 100% !important;
-            height: 100% !important;
-            display: block;
+            height: 500px;
+            width: 100%;
+            margin-bottom: 2rem;
+            overflow-x: auto;
+            overflow-y: hidden;
+            border: 1px solid #ddd;
+            border-radius: 6px;
+            padding: 2rem;
+            white-space: nowrap;
         }
 
         h1,
         h2 {
-            text-align: center;
+            color: #1f2937;
             font-weight: 700;
             margin-bottom: 1rem;
+            text-align: center;
+        }
+
+        .tooltip-custom {
+            background: rgba(0, 0, 0, 0.7);
+            color: white;
+            padding: 8px;
+            border-radius: 4px;
+            pointer-events: none;
+            opacity: 0;
+            position: absolute;
+            transform: translate(-50%, 0);
+            transition: opacity 0.2s ease-in-out;
+            z-index: 1000;
         }
     </style>
 </head>
 
-<body class="bg-gradient-to-br from-blue-50 to-indigo-100 min-h-screen p-4">
+<body class="p-4 bg-gray-100">
     <div class="container">
-        <h1 class="text-3xl mb-6 text-gray-800">Análisis de Transacciones del Bot</h1>
+        <h1 class="text-3xl font-bold mb-6 text-center text-gray-800">Análisis de Transacciones del Bot</h1>
 
-        <!-- Gráfico Acumulado -->
-        <div class="chart-scroll-container">
-            <div class="chart-inner-wrapper">
-                <h2 class="text-xl text-gray-700 mb-2">Beneficio/Pérdida Acumulado (USDT)</h2>
-                <canvas id="cumulativeChart"></canvas>
+        <div class="chart-container">
+            <h2 class="text-xl font-semibold mb-4 text-center text-gray-700">Beneficio/Pérdida Acumulado (USDT)</h2>
+            <div style="min-width: 1000px; display: inline-block;">
+                <canvas id="cumulativeProfitChart"></canvas>
             </div>
+
         </div>
 
-        <!-- Gráfico por Operación -->
-        <div class="chart-scroll-container">
-            <div class="chart-inner-wrapper">
-                <h2 class="text-xl text-gray-700 mb-2">Beneficio/Pérdida por Operación (USDT)</h2>
-                <canvas id="individualChart"></canvas>
+        <div class="chart-container">
+            <h2 class="text-xl font-semibold mb-4 text-center text-gray-700">Beneficio/Pérdida por Operación (USDT)</h2>
+            <div style="min-width: 1000px; display: inline-block;">
+                <canvas id="individualProfitChart"></canvas>
             </div>
+
         </div>
 
-        <!-- Botón de regreso -->
-        <div class="text-center mt-8">
+        <div class="text-center mt-4">
             <a href="../index.html"
-                class="inline-flex items-center px-6 py-3 text-base font-medium text-white bg-gray-600 hover:bg-gray-700 rounded-md shadow-sm transition">
-                ← Volver al Resumen
+                class="inline-flex items-center px-6 py-3 border border-transparent text-base font-medium rounded-md shadow-sm text-white bg-gray-600 hover:bg-gray-700 transition-colors duration-300">
+                &larr; Volver al Resumen
             </a>
         </div>
     </div>
 
+
+
+    </div>
     <script type="module">
+        // Importar csvData desde el archivo externo data.js
+        // Asegúrate de que el archivo 'data.js' exista en el mismo directorio
+        // y contenga 'export const csvData = `...`;'
         import { csvData } from '../data.js';
 
         function parseCSV(csvString) {
             const lines = csvString.trim().split('\n');
             const headers = lines[0].split(',');
             const data = [];
+
             for (let i = 1; i < lines.length; i++) {
-                const row = {};
-                const values = lines[i].split(',');
-                if (values.length === headers.length) {
-                    headers.forEach((h, j) => {
-                        row[h.trim()] = values[j].trim();
-                    });
+                const currentLine = lines[i].split(',');
+                // Asegurarse de que la línea no esté vacía y tenga el número correcto de columnas
+                // Se ha modificado la condición para permitir celdas vacías, ya que el CSV original las tiene.
+                // La condición `currentLine.length === headers.length` es suficiente si el CSV está bien formado.
+                if (currentLine.length === headers.length) {
+                    const row = {};
+                    for (let j = 0; j < headers.length; j++) {
+                        // Usar trim() para limpiar espacios en blanco alrededor de los valores.
+                        row[headers[j].trim()] = currentLine[j].trim();
+                    }
                     data.push(row);
                 }
             }
             return data;
         }
 
-        const parsedData = parseCSV(csvData).filter(d =>
-            d.tipo === 'VENTA' &&
-            d.ganancia_usdt &&
-            d.ganancia_usdt !== 'Beneficio Total Acumulado'
-        ).sort((a, b) => new Date(a.timestamp) - new Date(b.timestamp));
+        const parsedData = parseCSV(csvData);
 
-        let cumulative = 0;
-        const acumulado = parsedData.map(d => {
-            const profit = parseFloat(d.ganancia_usdt);
-            cumulative += profit;
+        // Filter out "COMPRA" transactions and the "RESUMEN_TOTAL" row for profit calculation
+        const profitLossData = parsedData.filter(row =>
+            row.tipo === 'VENTA' &&
+            row.ganancia_usdt !== '' &&
+            row.ganancia_usdt !== 'Beneficio Total Acumulado' // Exclude the summary row
+        );
+
+        // Sort data by timestamp for cumulative chart
+        profitLossData.sort((a, b) => new Date(a.timestamp) - new Date(b.timestamp));
+
+        let cumulativeProfit = 0;
+        const cumulativeData = profitLossData.map(row => {
+            const profit = parseFloat(row.ganancia_usdt);
+            cumulativeProfit += profit;
             return {
-                fecha: new Date(d.timestamp),
-                profit: profit,
-                acumulado: cumulative,
-                simbolo: d.symbol,
-                motivo: d.motivo_venta
+                timestamp: new Date(row.timestamp),
+                cumulative: cumulativeProfit,
+                individualProfit: profit,
+                symbol: row.symbol,
+                reason: row.motivo_venta
             };
         });
 
-        // Chart 1
-        new Chart(document.getElementById('cumulativeChart').getContext('2d'), {
+        // --- Chart 1: Cumulative Profit/Loss ---
+        const ctxCumulative = document.getElementById('cumulativeProfitChart').getContext('2d');
+        new Chart(ctxCumulative, {
             type: 'line',
             data: {
-                labels: acumulado.map(d => d.fecha),
+                labels: cumulativeData.map(d => d.timestamp.toLocaleString()),
                 datasets: [{
-                    label: 'Acumulado (USDT)',
-                    data: acumulado.map(d => d.acumulado),
+                    label: 'Beneficio/Pérdida Acumulado (USDT)',
+                    data: cumulativeData.map(d => d.cumulative),
                     borderColor: 'rgb(75, 192, 192)',
-                    backgroundColor: 'rgba(75, 192, 192, 0.2)',
-                    fill: true,
-                    tension: 0.3,
-                    pointRadius: 3
+                    tension: 0.1,
+                    fill: false,
+                    pointRadius: 3,
+                    pointHoverRadius: 7
                 }]
             },
             options: {
                 responsive: true,
                 maintainAspectRatio: false,
+                plugins: {
+                    title: {
+                        display: false,
+                        text: 'Beneficio/Pérdida Acumulado (USDT)'
+                    },
+                    tooltip: {
+                        callbacks: {
+                            title: function (context) {
+                                return `Fecha: ${context[0].label}`;
+                            },
+                            label: function (context) {
+                                return `Acumulado: ${context.raw.toFixed(2)} USDT`;
+                            }
+                        }
+                    }
+                },
                 scales: {
                     x: {
-                        type: 'time',
-                        time: {
-                            unit: 'day',
-                            tooltipFormat: 'yyyy-MM-dd',
-                            displayFormats: { day: 'yyyy-MM-dd' }
-                        },
-                        title: { display: true, text: 'Fecha' },
-                        ticks: { maxRotation: 45, minRotation: 45 }
+                        type: 'category', // Use 'category' for string labels
+                        title: {
+                            display: true,
+                            text: 'Fecha y Hora de Venta'
+                        }
                     },
                     y: {
-                        title: { display: true, text: 'USDT' },
-                        beginAtZero: false
+                        title: {
+                            display: true,
+                            text: 'Beneficio/Pérdida Acumulado (USDT)'
+                        },
+                        beginAtZero: false // Allow negative values
                     }
                 }
             }
         });
 
-        // Chart 2
-        new Chart(document.getElementById('individualChart').getContext('2d'), {
+        // --- Chart 2: Individual Profit/Loss ---
+        const ctxIndividual = document.getElementById('individualProfitChart').getContext('2d');
+
+        // Function to get color based on profit/loss or reason
+        function getBarColor(profit, reason) {
+            if (profit > 0) {
+                return 'rgba(75, 192, 192, 0.8)'; // Greenish for profit
+            } else if (profit < 0) {
+                return 'rgba(255, 99, 132, 0.8)'; // Reddish for loss
+            } else {
+                return 'rgba(200, 200, 200, 0.8)'; // Grey for zero profit/loss
+            }
+        }
+
+        new Chart(ctxIndividual, {
             type: 'bar',
             data: {
-                labels: acumulado.map(d => `${d.simbolo} (${d.fecha.toLocaleDateString()})`),
+                labels: cumulativeData.map(d => `${d.symbol} (${d.timestamp.toLocaleDateString()})`),
                 datasets: [{
-                    label: 'Ganancia por Operación (USDT)',
-                    data: acumulado.map(d => d.profit),
-                    backgroundColor: acumulado.map(d =>
-                        d.profit > 0 ? 'rgba(75, 192, 192, 0.8)' :
-                            d.profit < 0 ? 'rgba(255, 99, 132, 0.8)' :
-                                'rgba(200, 200, 200, 0.8)'
-                    )
+                    label: 'Beneficio/Pérdida por Operación (USDT)',
+                    data: cumulativeData.map(d => d.individualProfit),
+                    backgroundColor: cumulativeData.map(d => getBarColor(d.individualProfit, d.reason)),
+                    borderColor: cumulativeData.map(d => getBarColor(d.individualProfit, d.reason).replace('0.8', '1')),
+                    borderWidth: 1
                 }]
             },
             options: {
                 responsive: true,
                 maintainAspectRatio: false,
+                plugins: {
+                    title: {
+                        display: false,
+                        text: 'Beneficio/Pérdida por Operación (USDT)'
+                    },
+                    tooltip: {
+                        callbacks: {
+                            title: function (context) {
+                                const dataPoint = cumulativeData[context[0].dataIndex];
+                                return `Símbolo: ${dataPoint.symbol}`;
+                            },
+                            label: function (context) {
+                                const dataPoint = cumulativeData[context.dataIndex];
+                                return [
+                                    `P&L: ${context.raw.toFixed(2)} USDT`,
+                                    `Motivo: ${dataPoint.reason}`
+                                ];
+                            }
+                        }
+                    }
+                },
                 scales: {
                     x: {
-                        type: 'category',
-                        title: { display: true, text: 'Operación' },
-                        ticks: { maxRotation: 45, minRotation: 45 }
+                        title: {
+                            display: true,
+                            text: 'Operación (Símbolo y Fecha)'
+                        },
+                        ticks: {
+                            autoSkip: true,
+                            maxRotation: 45,
+                            minRotation: 45
+                        }
                     },
                     y: {
-                        beginAtZero: true,
-                        title: { display: true, text: 'USDT' }
+                        title: {
+                            display: true,
+                            text: 'Beneficio/Pérdida (USDT)'
+                        },
+                        beginAtZero: true
                     }
                 }
             }
         });
     </script>
+
 </body>
 
 </html>
