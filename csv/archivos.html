@@ -97,136 +97,145 @@
     </div>
 
     <script>
+        // ---------- State ----------
+        let currentData = [];   // rows currently in the table
+        let sortState = {};   // { column: 1=asc, -1=desc }
+
+        // ---------- DOM refs ----------
         const csvFileInput = document.getElementById('csvFileInput');
         const fileNameDisplay = document.getElementById('fileNameDisplay');
         const csvTableContainer = document.getElementById('csvTableContainer');
-        const initialMessage = document.getElementById('initialMessage');
 
-        csvFileInput.addEventListener('change', (event) => {
-            const file = event.target.files[0];
-            if (file) {
-                fileNameDisplay.textContent = file.name;
-                readCSVFile(file);
-            } else {
+        // ---------- File handling ----------
+        csvFileInput.addEventListener('change', e => {
+            const file = e.target.files[0];
+            if (!file) {
                 fileNameDisplay.textContent = 'Ningún archivo seleccionado';
-                csvTableContainer.innerHTML = '<p id="initialMessage" class="text-gray-600 p-4">Carga un archivo CSV para ver los datos aquí.</p>';
+                csvTableContainer.innerHTML =
+                    '<p id="initialMessage" class="text-gray-600 p-4">Carga un archivo CSV para ver los datos aquí.</p>';
+                return;
             }
+            fileNameDisplay.textContent = file.name;
+            readCSVFile(file);
         });
 
         function readCSVFile(file) {
             const reader = new FileReader();
-
-            reader.onload = (e) => {
-                const csvString = e.target.result;
-                const parsedData = parseCSV(csvString);
-                displayTable(parsedData);
+            reader.onload = evt => {
+                currentData = parseCSV(evt.target.result);
+                renderTable(currentData);
             };
-
             reader.onerror = () => {
-                csvTableContainer.innerHTML = '<p class="text-red-500 p-4">Error al leer el archivo. Asegúrate de que es un archivo CSV válido.</p>';
+                csvTableContainer.innerHTML =
+                    '<p class="text-red-500 p-4">Error al leer el archivo. Asegúrate de que es un archivo CSV válido.</p>';
             };
-
             reader.readAsText(file);
         }
 
+        // ---------- CSV parsing ----------
         function parseCSV(csvString) {
             const lines = csvString.trim().split('\n');
             if (lines.length === 0) return [];
-
             const headers = lines[0].split(',').map(h => h.trim());
-            const data = [];
-
+            const rows = [];
             for (let i = 1; i < lines.length; i++) {
-                const currentLine = lines[i].split(',');
-                // Skip empty lines or the summary row if it exists and is malformed
-                if (currentLine.length === headers.length && currentLine[0].trim() !== 'RESUMEN_TOTAL') {
+                const cells = lines[i].split(',');
+                if (cells.length === headers.length && cells[0].trim() !== 'RESUMEN_TOTAL') {
                     const row = {};
-                    for (let j = 0; j < headers.length; j++) {
-                        row[headers[j]] = currentLine[j].trim();
-                    }
-                    data.push(row);
+                    headers.forEach((h, idx) => (row[h] = cells[idx].trim()));
+                    rows.push(row);
                 }
             }
-            return data;
+            return rows;
         }
 
-        function displayTable(data) {
-            // Clear previous content
+        // ---------- Table rendering ----------
+        function renderTable(data) {
             csvTableContainer.innerHTML = '';
-
-            if (data.length === 0) {
-                const noDataMessage = document.createElement('p');
-                noDataMessage.className = 'text-gray-600 p-4';
-                noDataMessage.textContent = 'El archivo CSV está vacío o no contiene datos válidos.';
-                csvTableContainer.appendChild(noDataMessage);
+            if (!data.length) {
+                csvTableContainer.innerHTML =
+                    '<p class="text-gray-600 p-4">El archivo CSV está vacío o no contiene datos válidos.</p>';
                 return;
             }
 
             const table = document.createElement('table');
-            table.className = 'min-w-full divide-y divide-gray-200'; // Tailwind classes for table
+            table.className = 'min-w-full divide-y divide-gray-200';
 
-            // Create table header
+            // --- header ---
             const thead = document.createElement('thead');
             const headerRow = document.createElement('tr');
             Object.keys(data[0]).forEach(key => {
                 const th = document.createElement('th');
-                th.textContent = key.replace(/_/g, ' ').toUpperCase(); // Format header text
+                th.textContent = key.replace(/_/g, ' ').toUpperCase();
+                th.style.cursor = 'pointer';
+                th.className = 'select-none';
+                th.onclick = () => sortBy(key);
+                // arrow indicator
+                const dir = sortState[key];
+                if (dir) th.innerHTML += dir === 1 ? ' ▲' : ' ▼';
                 headerRow.appendChild(th);
             });
             thead.appendChild(headerRow);
             table.appendChild(thead);
 
-            // Create table body
+            // --- body ---
             const tbody = document.createElement('tbody');
-            tbody.className = 'bg-white divide-y divide-gray-200'; // Tailwind classes for tbody
-
+            tbody.className = 'bg-white divide-y divide-gray-200';
             data.forEach(rowData => {
                 const tr = document.createElement('tr');
                 Object.keys(rowData).forEach(key => {
                     const td = document.createElement('td');
-                    let cellText = rowData[key];
+                    let cell = rowData[key];
 
-                    // Special formatting for 'ganancia_usdt'
-                    if (key === 'ganancia_usdt' && cellText !== '') {
-                        const profit = parseFloat(cellText);
-                        if (!isNaN(profit)) {
-                            td.textContent = profit.toFixed(4); // Format to 4 decimal places
-                            if (profit > 0) {
-                                td.classList.add('profit-positive');
-                            } else if (profit < 0) {
-                                td.classList.add('profit-negative');
-                            } else {
-                                td.classList.add('profit-zero');
-                            }
-                        } else {
-                            td.textContent = cellText; // Keep original if not a valid number
+                    // Special formatting
+                    if (key === 'ganancia_usdt' && cell !== '') {
+                        const n = parseFloat(cell);
+                        if (!isNaN(n)) {
+                            cell = n.toFixed(4);
+                            td.classList.add(n > 0 ? 'profit-positive' : n < 0 ? 'profit-negative' : 'profit-zero');
                         }
-                    } else if (key === 'timestamp' && cellText) {
-                        // Format timestamp for better readability
-                        try {
-                            const date = new Date(cellText);
-                            td.textContent = date.toLocaleString();
-                        } catch (e) {
-                            td.textContent = cellText; // Fallback if date parsing fails
-                        }
-                    } else if (key === 'precio' || key === 'valor_usdt' || key === 'cantidad') {
-                        // Format other numeric values
-                        const numValue = parseFloat(cellText);
-                        if (!isNaN(numValue)) {
-                            td.textContent = numValue.toFixed(4); // Example: 4 decimal places for prices/values
-                        } else {
-                            td.textContent = cellText;
-                        }
-                    } else {
-                        td.textContent = cellText;
+                    } else if (key === 'timestamp' && cell) {
+                        try { cell = new Date(cell).toLocaleString(); } catch { /* keep original */ }
+                    } else if (['precio', 'valor_usdt', 'cantidad'].includes(key)) {
+                        const n = parseFloat(cell);
+                        if (!isNaN(n)) cell = n.toFixed(4);
                     }
+
+                    td.textContent = cell;
                     tr.appendChild(td);
                 });
                 tbody.appendChild(tr);
             });
             table.appendChild(tbody);
-
             csvTableContainer.appendChild(table);
+        }
+
+        // ---------- Sorting ----------
+        function sortBy(column) {
+            const direction = sortState[column] === 1 ? -1 : 1;
+            sortState = { [column]: direction }; // single-column sort
+
+            currentData.sort((a, b) => {
+                let valA = a[column];
+                let valB = b[column];
+
+                // numeric
+                if (!isNaN(valA) && !isNaN(valB))
+                    return direction * (parseFloat(valA) - parseFloat(valB));
+
+                // date
+                if (column === 'timestamp') {
+                    const dA = new Date(valA);
+                    const dB = new Date(valB);
+                    if (!isNaN(dA) && !isNaN(dB))
+                        return direction * (dA - dB);
+                }
+
+                // string
+                return direction * valA.toString().localeCompare(valB.toString());
+            });
+
+            renderTable(currentData);
         }
     </script>
 </body>
